@@ -1,0 +1,21 @@
+  <section>
+    <div class="prose" style="display:grid;gap:10px">
+      <div class="eyebrow">差距拆解</div>
+      <h2>fixed_size 在 Qasper 上落后的 9.4 个点从哪来</h2>
+      <p class="note">三个方案都设 chunk_size=400，但这只是上限：自研按句子装满，平均 360 token；LangChain 先按段落切再合并，常在段落结尾停下，平均 325 token。逐项改动自研实现、每次只改一处，结果如下（Qasper，R@2k tok，同一 embedding）。</p>
+    </div>
+    <div class="tablebox">
+      <table>
+        <thead><tr><th class="l">配置</th><th>平均 token</th><th>R@2k tok</th><th>与上一行比</th><th class="l">改了什么</th></tr></thead>
+        <tbody>
+          <tr><td class="l">自研 v1</td><td>360</td><td>69.2</td><td></td><td class="l" style="white-space:normal">按句子打包，不看段落；14% 的证据段落被切断</td></tr>
+          <tr><td class="l">+ 段落感知（min_fill 0.5）</td><td>321</td><td>73.5</td><td class="pos">+4.3</td><td class="l" style="white-space:normal">chunk 满了就退到最近的段落结尾切，前提是至少半满</td></tr>
+          <tr><td class="l">+ 总在段落结尾切（min_fill 0）</td><td>315</td><td>74.6</td><td class="pos">+1.1</td><td class="l" style="white-space:normal">只要 chunk 里有段落结尾就在那里切</td></tr>
+          <tr><td class="l">+ overlap 不跨段落</td><td>316</td><td>76.9</td><td class="pos">+2.3</td><td class="l" style="white-space:normal">切点在段落结尾时不再把上一段的尾句带进下一个 chunk</td></tr>
+          <tr class="sep"><td class="l">自研 v3（递归切分，现为默认）</td><td>325</td><td>78.6</td><td class="pos">+1.7</td><td class="l" style="white-space:normal">先按段落、再按行、句子、词递归切，再合并到 chunk_size；与 LangChain 切出的 chunk 完全一致</td></tr>
+          <tr><td class="l">LangChain</td><td>325</td><td>78.6</td><td></td><td class="l" style="white-space:normal">RecursiveCharacterTextSplitter，同样 400 / 50</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">9.4 个点里有 7.7 个来自切点位置和 overlap 的写法，和 chunk 大小基本无关：第二行起自研的平均大小已经和 LangChain 相当。改完后在三个数据集上与 LangChain 的配对差（R@2k，bootstrap 95% 置信区间）：Qasper −1.7 [−5.7, +2.1]，OHR-Bench −0.1 [−1.9, +1.6]，两者都不显著；Chroma −3.0 [−5.2, −0.7]，但那里 LangChain 的 chunk 更小（281 对 314 token），按粒度对照的趋势，这部分差距主要来自 chunk 大小。最后改用递归切分的 v3 补上了剩下的差距：Qasper 和 OHR-Bench 上与 LangChain 的召回率和平均 chunk 大小都相同，Chroma 上召回率不低于 LangChain（chunk 更小）。</p>
+  </section>

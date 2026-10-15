@@ -1,0 +1,317 @@
+<title>文档切分方案评测</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600;700&display=swap">
+<style>
+/* Layout: one reading column (~760px) for prose; charts and tables may run to 1080px. Engineering-review tone, no hero. */
+:root {
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --ink: #15181d;
+  --ink-2: #4c5361;
+  --ink-3: #7b8290;
+  --rule: #dde1e7;
+  --accent: #1f4e8c;
+  --accent-soft: #e6edf7;
+  --good: #1d7a46;
+  --bad: #b3372f;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a;
+  --grid: #e9ecf0;
+  --f-display: "Noto Serif SC", "Songti SC", serif;
+  --f-body: "IBM Plex Sans", "Noto Sans SC", "PingFang SC", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111317; --surface: #191c21; --ink: #e9ebef; --ink-2: #b4bac5; --ink-3: #848b98;
+    --rule: #2c3038; --accent: #8fb4ec; --accent-soft: #1e2a3d; --good: #5cc48a; --bad: #ef8178;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --grid: #23272e;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111317; --surface: #191c21; --ink: #e9ebef; --ink-2: #b4bac5; --ink-3: #848b98;
+  --rule: #2c3038; --accent: #8fb4ec; --accent-soft: #1e2a3d; --good: #5cc48a; --bad: #ef8178;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --grid: #23272e;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.7 var(--f-body); padding-inline: 16px; padding-block: 40px 80px; }
+.wrap { max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 56px; }
+.prose { max-width: 760px; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; line-height: 1.3; margin: 0; }
+h1 { font-size: 2rem; }
+h2 { font-size: 1.4rem; }
+h3 { font-size: 1.05rem; font-family: var(--f-body); font-weight: 600; }
+p { margin: 0; }
+section { display: flex; flex-direction: column; gap: 18px; }
+.eyebrow { font: 500 12px/1 var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+.lede { color: var(--ink-2); font-size: 1.05rem; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 20px; font: 13px var(--f-mono); color: var(--ink-3); }
+.verdict { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 22px 24px; display: grid; gap: 14px; }
+.verdict ol { margin: 0; padding-left: 1.3em; display: grid; gap: 8px; }
+.verdict strong { color: var(--accent); }
+.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+.chart { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 16px 16px 10px; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.chart h3 small { font: 400 12px var(--f-mono); color: var(--ink-3); margin-left: 6px; }
+.chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.chart svg text { fill: var(--ink-2); font: 11px var(--f-mono); }
+.chart svg .lbl { fill: var(--ink); }
+.chart svg .grp { fill: var(--ink); font: 500 12px var(--f-body); }
+.tablebox { overflow-x: auto; background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th, td { padding: 8px 12px; text-align: right; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+th { font: 500 12px var(--f-mono); color: var(--ink-3); text-transform: uppercase; letter-spacing: .04em; background: var(--surface); position: sticky; top: 0; }
+td { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+td.l, th.l { text-align: left; font-family: var(--f-body); }
+tbody tr:last-child td { border-bottom: 0; }
+tr.sep td { border-top: 2px solid var(--rule); }
+.best { color: var(--accent); font-weight: 600; }
+.pos { color: var(--good); } .neg { color: var(--bad); }
+.dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 7px; vertical-align: 1px; }
+.cmp td { white-space: normal; text-align: left; font-family: var(--f-body); vertical-align: top; min-width: 150px; }
+.cmp td:first-child { font-weight: 600; min-width: 110px; }
+.note { font-size: 13.5px; color: var(--ink-2); }
+.notes { display: grid; gap: 10px; padding-left: 1.2em; margin: 0; color: var(--ink-2); }
+details summary { cursor: pointer; color: var(--accent); font-weight: 500; }
+details summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+#tip { position: fixed; pointer-events: none; background: var(--ink); color: var(--bg); font: 12px/1.5 var(--f-mono); padding: 6px 9px; border-radius: 6px; z-index: 10; max-width: 260px; }
+code { font: 13px var(--f-mono); background: var(--accent-soft); padding: 1px 5px; border-radius: 4px; }
+@media (max-width: 560px) { h1 { font-size: 1.6rem; } .verdict { padding: 18px; } }
+</style>
+
+<div class="wrap">
+  <header class="prose" style="display:grid;gap:14px">
+    <div class="eyebrow">Document Studio · Document Chunking</div>
+    <h1>文档切分方案评测</h1>
+    <p class="lede">把三个可上生产的候选方案都实现出来，在三个公开基准上用同一套 embedding、同一套指标跑了一遍，回答两个问题：自研的效果有没有短板，以及该选哪个方案。</p>
+    <div class="meta"><span id="m-queries"></span><span id="m-tokens"></span><span>embedding: BAAI/bge-m3</span><span>LLM: Qwen3-4B-Instruct (本地)</span></div>
+  </header>
+
+  <section class="verdict prose" aria-labelledby="v-h">
+    <h2 id="v-h">结论</h2>
+    <!--VERDICT-->
+  </section>
+
+  <section>
+    <div class="prose" style="display:grid;gap:10px">
+      <div class="eyebrow">主结果</div>
+      <h2>按 2,000 token 检索预算算召回率</h2>
+      <p class="note">横轴从最低值附近开始，用点而不是柱子表示，避免放大差距。</p>
+      <p class="note">每个问题检索相似度最高的 chunk，直到累计达到 2,000 token，统计标准答案文本被覆盖了多少。按 token 预算而不是按 top-k 比，是为了不让切得更碎的实现占便宜。数值越高越好。</p>
+    </div>
+    <div class="legend" id="legend-main"></div>
+    <div class="charts" id="charts-main"></div>
+    <details>
+      <summary>查看完整数据表（R@5、P@5、IoU、chunk 数、耗时）</summary>
+      <div class="tablebox" style="margin-top:12px"><table id="t-full"></table></div>
+    </details>
+  </section>
+
+
+  <section>
+    <div class="prose" style="display:grid;gap:10px">
+      <div class="eyebrow">粒度对照</div>
+      <h2>同样的 chunk 大小下谁更好</h2>
+      <p class="note">各实现切出的平均 chunk 大小不一样，而 chunk 越小，在固定预算下通常越占优。这里把 chunk_size 设为 200 / 300 / 400 各跑一遍，横轴是实际平均 token 数，纵轴是召回率。同一横坐标附近的点才是公平比较。</p>
+    </div>
+    <div class="charts" id="charts-sweep"></div>
+  </section>
+
+  <section>
+    <div class="prose" style="display:grid;gap:10px">
+      <div class="eyebrow">Context enrichment</div>
+      <h2>加上下文前后对比</h2>
+      <p class="note">LLM 为每个 chunk 写一句"这段在文档中讲什么"的上下文，拼在 chunk 前再做 embedding。因为要逐个调用 LLM，只在精简子集上跑，基线是同一子集上各方案自己的 fixed_size。</p>
+    </div>
+    <div class="tablebox"><table id="t-ctx"></table></div>
+    <!--CTX_NOTE-->
+  </section>
+
+  <section>
+    <div class="prose" style="display:grid;gap:10px">
+      <div class="eyebrow">工程维度</div>
+      <h2>效果以外的差别</h2>
+    </div>
+    <div class="tablebox">
+      <table class="cmp">
+        <thead><tr><th class="l"></th><th class="l"><span class="dot" style="background:var(--s1)"></span>自研</th><th class="l"><span class="dot" style="background:var(--s2)"></span>chonkie</th><th class="l"><span class="dot" style="background:var(--s3)"></span>LangChain + 自研</th></tr></thead>
+        <tbody>
+          <tr><td>传递依赖</td><td>10 个包</td><td>13 个，含 2 个 Rust 二进制包</td><td>34 个</td></tr>
+          <tr><td>历史漏洞</td><td>markdown-it-py 2 个，2023 年已修</td><td>0（项目约两年，审查少）</td><td>langchain-core 18 个，splitters 4 个</td></tr>
+          <tr><td>nltk</td><td>不引入</td><td>不引入</td><td>默认不引入，<code>NLTKTextSplitter</code> 会引入</td></tr>
+          <tr><td>四种策略覆盖</td><td>全部自己实现</td><td>缺 context enrich；markdown recipe 运行时要联网下载，已内置</td><td>缺 semantic 和 context enrich，已自研并套 LangChain 接口</td></tr>
+          <tr><td>chunk 位置信息</td><td>精确 offset</td><td>精确 offset</td><td>库自带 <code>start_index</code> 在有 overlap 时会错位，需要自己重新定位</td></tr>
+          <tr><td>维护</td><td>团队自己维护，约 800 行</td><td>约 90% 的提交来自 2 人，组织已改名</td><td>生态大，大版本升级频繁</td></tr>
+          <tr><td>和 research 团队衔接</td><td>提供 <code>to_documents()</code> 转 LangChain</td><td>需要适配层</td><td>原生兼容</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="prose">
+    <div class="eyebrow">测试方法</div>
+    <h2>数据集与口径</h2>
+    <div class="tablebox"><table id="t-ds"></table></div>
+    <ul class="notes">
+      <li>三个方案用同一套 embedding（bge-m3，本地运行）和同一个 LLM，所有 chunk 都校验了 <code>text == 原文[start:end]</code>，指标按字符区间重叠计算，与 Chroma 的 chunking 评测口径一致。</li>
+      <li>Chroma 和 OHR-Bench 在整个数据集的所有 chunk 里检索；Qasper 的问题不写论文名，所以只在对应论文内检索。</li>
+      <li>chonkie 的 semantic 阈值校准到与自研相近的平均 chunk 大小（0.15），其余参数都用库的默认值。LangChain 的 semantic 就是自研算法套接口，所以两行数字相同。</li>
+      <li>embedding 和 LLM 都用本地开源模型，换成公司的 API 后绝对数值会变，方案之间的相对差距更有参考价值。重跑方式：<code>bench/run_bench.py --embedding-url … --llm-url …</code>。</li>
+      <!--EXTRA_NOTES-->
+    </ul>
+  </section>
+</div>
+<div id="tip" hidden></div>
+
+<script>
+const DATA = /*DATA*/null;
+const OPTS = [
+  {key: "selfbuilt", name: "自研", color: "var(--s1)"},
+  {key: "chonkie", name: "chonkie", color: "var(--s2)"},
+  {key: "langchain", name: "LangChain", color: "var(--s3)"},
+];
+const STRATS = [["fixed_size", "fixed_size"], ["layout_aware", "layout_aware"], ["semantic", "semantic"]];
+const DS = [["chroma", "Chroma"], ["qasper", "Qasper"], ["ohr", "OHR-Bench"]];
+const rows = DATA.rows;
+const get = (d, o, s, cs = 400) => rows.find(r => r.dataset === d && r.option === o && r.strategy === s && r.config.chunk_size === cs);
+const pct = x => (x * 100).toFixed(1);
+const tip = document.getElementById("tip");
+function showTip(e, html) { tip.innerHTML = html; tip.hidden = false; const x = Math.min(e.clientX + 14, innerWidth - tip.offsetWidth - 8); tip.style.left = x + "px"; tip.style.top = (e.clientY + 14) + "px"; }
+function hideTip() { tip.hidden = true; }
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, parent, text) { const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); if (text != null) n.textContent = text; parent && parent.appendChild(n); return n; }
+
+// legend
+document.getElementById("legend-main").innerHTML = OPTS.map(o => `<span><i style="background:${o.color}"></i>${o.name}</span>`).join("");
+
+// meta
+const full = DS.map(([d]) => rows.find(r => r.dataset === d)).filter(Boolean);
+document.getElementById("m-queries").textContent = `${full.reduce((a, r) => a + r.n_queries, 0).toLocaleString()} 个问题`;
+document.getElementById("m-tokens").textContent = `${DATA.tokens}`;
+
+// main bar charts: one per dataset, groups = strategy, bars = options (horizontal)
+const main = document.getElementById("charts-main");
+for (const [d, dname] of DS) {
+  const box = document.createElement("div"); box.className = "chart";
+  const any = rows.find(r => r.dataset === d); if (!any) continue;
+  box.innerHTML = `<h3>${dname}<small>${any.n_docs} 文档 · ${any.n_queries} 问题</small></h3>`;
+  const groups = STRATS.map(([s, sl]) => ({s, sl, bars: OPTS.map(o => ({o, r: get(d, o.key, s)})).filter(b => b.r)}));
+  const vals = groups.flatMap(g => g.bars.map(b => b.r["recall@2000tok"]));
+  const lo = Math.max(0, Math.floor((Math.min(...vals) - 0.05) * 20) / 20), hi = Math.min(1, Math.ceil((Math.max(...vals) + 0.01) * 20) / 20);
+  const W = 420, L = 8, R = 46, barH = 14, gap = 2, gpad = 26;
+  let y = 4; const H = groups.reduce((a, g) => a + gpad + g.bars.length * (barH + gap) + 10, 24);
+  const svg = el("svg", {viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": `${dname} 召回率`}, box);
+  const x = v => L + (v - lo) / (hi - lo) * (W - L - R);
+  for (let t = lo; t <= hi + 1e-9; t += 0.05) { el("line", {x1: x(t), x2: x(t), y1: 18, y2: H - 4, stroke: "var(--grid)"}, svg); el("text", {x: x(t), y: 11, "text-anchor": "middle"}, svg, pct(t)); }
+  y = 22;
+  for (const g of groups) {
+    el("text", {x: L, y: y + 14, class: "grp"}, svg, g.sl);
+    y += gpad;
+    const best = Math.max(...g.bars.map(b => b.r["recall@2000tok"]));
+    for (const b of g.bars) {
+      // dot plot: the axis does not start at zero, so no bar lengths
+      const v = b.r["recall@2000tok"], cx = x(v), cy = y + barH / 2;
+      el("line", {x1: L, x2: W - R, y1: cy, y2: cy, stroke: "var(--grid)"}, svg);
+      el("circle", {cx, cy, r: 5.5, fill: b.o.color, stroke: "var(--surface)", "stroke-width": 2}, svg);
+      const lbl = el("text", {x: cx + 10, y: cy + 4, class: v === best ? "lbl" : ""}, svg, pct(v));
+      if (v === best) lbl.setAttribute("font-weight", "600");
+      const hit = el("rect", {x: 0, y: y - 1, width: W, height: barH + gap + 1, fill: "transparent"}, svg);
+      const html = `<b>${b.o.name}</b> · ${g.sl}<br>R@2k tok ${pct(v)}%<br>R@5 ${pct(b.r["recall@5"])}% · IoU@5 ${pct(b.r["iou@5"])}%<br>平均 ${b.r.avg_tokens.toFixed(0)} token · ${b.r.n_chunks} chunks`;
+      hit.addEventListener("mousemove", e => showTip(e, html)); hit.addEventListener("mouseleave", hideTip);
+      y += barH + gap;
+    }
+    y += 10;
+  }
+  el("text", {x: W - 2, y: 11, "text-anchor": "end"}, svg, "%");
+  main.appendChild(box);
+}
+
+// full table
+(function () {
+  const t = document.getElementById("t-full");
+  let h = `<thead><tr><th class="l">数据集</th><th class="l">策略</th><th class="l">方案</th><th>R@2k tok</th><th>R@1k tok</th><th>R@5</th><th>P@5</th><th>IoU@5</th><th>chunks</th><th>平均 token</th><th>切分耗时 s</th></tr></thead><tbody>`;
+  for (const [d, dn] of DS) for (const [s] of STRATS) {
+    const rs = OPTS.map(o => [o, get(d, o.key, s)]).filter(x => x[1]);
+    if (!rs.length) continue;
+    const best = Math.max(...rs.map(x => x[1]["recall@2000tok"]));
+    rs.forEach(([o, r], i) => {
+      h += `<tr class="${i === 0 ? "sep" : ""}"><td class="l">${i === 0 ? dn : ""}</td><td class="l">${i === 0 ? s : ""}</td><td class="l"><span class="dot" style="background:${o.color}"></span>${o.name}</td>` +
+        `<td class="${r["recall@2000tok"] === best ? "best" : ""}">${pct(r["recall@2000tok"])}</td><td>${pct(r["recall@1000tok"])}</td><td>${pct(r["recall@5"])}</td><td>${pct(r["precision@5"])}</td><td>${pct(r["iou@5"])}</td><td>${r.n_chunks}</td><td>${r.avg_tokens.toFixed(0)}</td><td>${r.chunk_seconds.toFixed(1)}</td></tr>`;
+    });
+  }
+  t.innerHTML = h + "</tbody>";
+})();
+
+// sweep: per dataset, fixed_size and layout_aware as two panels each
+const sweep = document.getElementById("charts-sweep");
+for (const [d, dn] of DS) for (const s of ["fixed_size", "layout_aware"]) {
+  const series = OPTS.map(o => ({o, pts: [200, 300, 400].map(cs => get(d, o.key, s, cs)).filter(Boolean).map(r => ({x: r.avg_tokens, y: r["recall@2000tok"], cs: r.config.chunk_size}))})).filter(sr => sr.pts.length > 1);
+  if (!series.length) continue;
+  const box = document.createElement("div"); box.className = "chart";
+  box.innerHTML = `<h3>${dn}<small>${s}</small></h3>`;
+  const xs = series.flatMap(sr => sr.pts.map(p => p.x)), ys = series.flatMap(sr => sr.pts.map(p => p.y));
+  const x0 = Math.floor(Math.min(...xs) / 50) * 50, x1 = Math.ceil(Math.max(...xs) / 50) * 50;
+  const y0 = Math.floor((Math.min(...ys) - 0.01) * 50) / 50, y1 = Math.ceil((Math.max(...ys) + 0.005) * 50) / 50;
+  const W = 380, H = 220, L = 40, R = 10, T = 10, B = 30;
+  const svg = el("svg", {viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": `${dn} ${s} 粒度对照`}, box);
+  const X = v => L + (v - x0) / (x1 - x0) * (W - L - R), Y = v => T + (1 - (v - y0) / (y1 - y0)) * (H - T - B);
+  for (let t = y0; t <= y1 + 1e-9; t += 0.02) { el("line", {x1: L, x2: W - R, y1: Y(t), y2: Y(t), stroke: "var(--grid)"}, svg); el("text", {x: L - 6, y: Y(t) + 4, "text-anchor": "end"}, svg, pct(t)); }
+  for (let t = x0; t <= x1 + 1e-9; t += 50) el("text", {x: X(t), y: H - 12, "text-anchor": "middle"}, svg, t);
+  el("text", {x: W - R, y: H - 1, "text-anchor": "end"}, svg, "平均 token / chunk");
+  // earlier series are drawn wider underneath, so a series that coincides with a later one stays visible
+  series.forEach((sr, i) => {
+    const pts = sr.pts.sort((a, b) => a.x - b.x), wide = (series.length - 1 - i);
+    el("polyline", {points: pts.map(p => `${X(p.x)},${Y(p.y)}`).join(" "), fill: "none", stroke: sr.o.color, "stroke-width": 2 + wide * 3, "stroke-linecap": "round", "stroke-linejoin": "round"}, svg);
+    for (const p of pts) {
+      el("circle", {cx: X(p.x), cy: Y(p.y), r: 4.5 + wide * 2, fill: sr.o.color, stroke: "var(--surface)", "stroke-width": 2}, svg);
+      const hit = el("circle", {cx: X(p.x), cy: Y(p.y), r: 12, fill: "transparent"}, svg);
+      const html = `<b>${sr.o.name}</b> · chunk_size ${p.cs}<br>平均 ${p.x.toFixed(0)} token<br>R@2k tok ${pct(p.y)}%`;
+      hit.addEventListener("mousemove", e => showTip(e, html)); hit.addEventListener("mouseleave", hideTip);
+    }
+  });
+  const lg = document.createElement("div"); lg.className = "legend";
+  lg.innerHTML = series.map(sr => `<span><i style="background:${sr.o.color}"></i>${sr.o.name}</span>`).join("");
+  box.appendChild(lg);
+  const same = (a, b) => a.pts.length === b.pts.length && a.pts.every((p, k) => Math.abs(p.y - b.pts[k].y) < 0.001 && Math.abs(p.x - b.pts[k].x) < 3);
+  const pairs = [];
+  series.forEach((a, i) => series.slice(i + 1).forEach(b => { if (same(a, b)) pairs.push(`${a.o.name}与 ${b.o.name}`); }));
+  if (pairs.length) { const n = document.createElement("p"); n.className = "note"; n.textContent = `${pairs.join("、")} 的结果几乎完全重合（外圈较粗的是被覆盖的那条）。`; box.appendChild(n); }
+  sweep.appendChild(box);
+}
+if (!sweep.children.length) sweep.innerHTML = `<p class="note">粒度对照数据尚未生成。</p>`;
+
+// context enrichment table
+(function () {
+  const t = document.getElementById("t-ctx");
+  let h = `<thead><tr><th class="l">子集</th><th class="l">方案</th><th>问题数</th><th>基线 R@2k</th><th>加上下文 R@2k</th><th>变化</th><th>基线 R@1k</th><th>加上下文 R@1k</th><th>变化</th></tr></thead><tbody>`;
+  for (const [d, dn] of DS) {
+    const lite = d + "-lite"; let first = true;
+    for (const o of OPTS) {
+      const b = get(lite, o.key, "fixed_size"), e = get(lite, o.key, "context_enriched");
+      if (!b || !e) continue;
+      const d2 = e["recall@2000tok"] - b["recall@2000tok"], d1 = e["recall@1000tok"] - b["recall@1000tok"];
+      const c = v => v > 0.005 ? "pos" : v < -0.005 ? "neg" : "";
+      h += `<tr class="${first ? "sep" : ""}"><td class="l">${first ? dn : ""}</td><td class="l"><span class="dot" style="background:${o.color}"></span>${o.name}</td><td>${e.n_queries}</td><td>${pct(b["recall@2000tok"])}</td><td>${pct(e["recall@2000tok"])}</td><td class="${c(d2)}">${d2 >= 0 ? "+" : ""}${pct(d2)}</td><td>${pct(b["recall@1000tok"])}</td><td>${pct(e["recall@1000tok"])}</td><td class="${c(d1)}">${d1 >= 0 ? "+" : ""}${pct(d1)}</td></tr>`;
+      first = false;
+    }
+  }
+  t.innerHTML = h + "</tbody>";
+})();
+
+// datasets table
+(function () {
+  const info = {
+    chroma: ["Chroma chunking evaluation", "MIT", "国情咨文、聊天记录、财报、PubMed、维基，纯文本，标准答案是原文片段"],
+    qasper: ["Qasper（测试集抽样）", "CC-BY-4.0", "NLP 论文，转成带 #/##/### 标题的 Markdown，标准答案是证据段落"],
+    ohr: ["OHR-Bench（抽样）", "CC-BY-4.0", "7 个领域 PDF 的人工校对 OCR 结果，中英文混合，含 LaTeX 表格"],
+  };
+  let h = `<thead><tr><th class="l">数据集</th><th class="l">许可</th><th>文档</th><th>问题</th><th class="l">内容</th></tr></thead><tbody>`;
+  for (const [d] of DS) { const r = rows.find(x => x.dataset === d); if (!r) continue; const [n, lic, desc] = info[d]; h += `<tr><td class="l">${n}</td><td class="l">${lic}</td><td>${r.n_docs}</td><td>${r.n_queries}</td><td class="l" style="white-space:normal;min-width:240px">${desc}</td></tr>`; }
+  document.getElementById("t-ds").innerHTML = h + "</tbody>";
+})();
+</script>

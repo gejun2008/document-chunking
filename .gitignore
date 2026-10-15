@@ -1,0 +1,15 @@
+# environments and caches
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+
+# benchmark inputs: fetched by bench/download_data.py (OHR-Bench is research-only, do not redistribute)
+data/
+
+# embedding / LLM caches (~1 GB, rebuilt on demand)
+.bench_cache/
+
+# run logs
+results/*.log

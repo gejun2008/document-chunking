@@ -1,0 +1,200 @@
+[
+ {
+  "dataset": "chroma",
+  "strategy": "fixed_size",
+  "a": "selfbuilt",
+  "b": "langchain",
+  "n": 472,
+  "mean_diff": 0.005802398774266257,
+  "ci_low": -0.006542312357530202,
+  "ci_high": 0.018920633577789867,
+  "significant": false
+ },
+ {
+  "dataset": "chroma",
+  "strategy": "fixed_size",
+  "a": "selfbuilt",
+  "b": "chonkie",
+  "n": 472,
+  "mean_diff": 0.022267007886253704,
+  "ci_low": 0.0008089083555360607,
+  "ci_high": 0.04371948668231805,
+  "significant": true
+ },
+ {
+  "dataset": "chroma",
+  "strategy": "layout_aware",
+  "a": "selfbuilt",
+  "b": "langchain",
+  "n": 472,
+  "mean_diff": 0.01196150146374417,
+  "ci_low": -0.005630142348494866,
+  "ci_high": 0.03039791986262623,
+  "significant": false
+ },
+ {
+  "dataset": "chroma",
+  "strategy": "layout_aware",
+  "a": "selfbuilt",
+  "b": "chonkie",
+  "n": 472,
+  "mean_diff": -0.007036407846547477,
+  "ci_low": -0.01986820563957221,
+  "ci_high": 0.004760411522695528,
+  "significant": false
+ },
+ {
+  "dataset": "chroma",
+  "strategy": "semantic",
+  "a": "selfbuilt",
+  "b": "langchain",
+  "n": 472,
+  "mean_diff": 0.0,
+  "ci_low": 0.0,
+  "ci_high": 0.0,
+  "significant": false
+ },
+ {
+  "dataset": "chroma",
+  "strategy": "semantic",
+  "a": "selfbuilt",
+  "b": "chonkie",
+  "n": 472,
+  "mean_diff": -0.009960783369399168,
+  "ci_low": -0.03378478105206116,
+  "ci_high": 0.01388324383528243,
+  "significant": false
+ },
+ {
+  "dataset": "qasper",
+  "strategy": "fixed_size",
+  "a": "selfbuilt",
+  "b": "langchain",
+  "n": 226,
+  "mean_diff": 0.0,
+  "ci_low": 0.0,
+  "ci_high": 0.0,
+  "significant": false
+ },
+ {
+  "dataset": "qasper",
+  "strategy": "fixed_size",
+  "a": "selfbuilt",
+  "b": "chonkie",
+  "n": 226,
+  "mean_diff": 0.09227686101888725,
+  "ci_low": 0.04730183640903623,
+  "ci_high": 0.13929328927975204,
+  "significant": true
+ },
+ {
+  "dataset": "qasper",
+  "strategy": "layout_aware",
+  "a": "selfbuilt",
+  "b": "langchain",
+  "n": 226,
+  "mean_diff": -0.014086362634858211,
+  "ci_low": -0.04576106464637544,
+  "ci_high": 0.017867760300586358,
+  "significant": false
+ },
+ {
+  "dataset": "qasper",
+  "strategy": "layout_aware",
+  "a": "selfbuilt",
+  "b": "chonkie",
+  "n": 226,
+  "mean_diff": 0.01887470337115355,
+  "ci_low": -0.0176103492124892,
+  "ci_high": 0.0542348171598136,
+  "significant": false
+ },
+ {
+  "dataset": "qasper",
+  "strategy": "semantic",
+  "a": "selfbuilt",
+  "b": "langchain",
+  "n": 226,
+  "mean_diff": 0.0,
+  "ci_low": 0.0,
+  "ci_high": 0.0,
+  "significant": false
+ },
+ {
+  "dataset": "qasper",
+  "strategy": "semantic",
+  "a": "selfbuilt",
+  "b": "chonkie",
+  "n": 226,
+  "mean_diff": 0.05185335239657738,
+  "ci_low": 0.0038400776741042055,
+  "ci_high": 0.10171750776895111,
+  "significant": true
+ },
+ {
+  "dataset": "ohr",
+  "strategy": "fixed_size",
+  "a": "selfbuilt",
+  "b": "langchain",
+  "n": 731,
+  "mean_diff": 0.0,
+  "ci_low": -0.004103967168262654,
+  "ci_high": 0.004103967168262654,
+  "significant": false
+ },
+ {
+  "dataset": "ohr",
+  "strategy": "fixed_size",
+  "a": "selfbuilt",
+  "b": "chonkie",
+  "n": 731,
+  "mean_diff": 0.019948547053619477,
+  "ci_low": -0.0061057624419803,
+  "ci_high": 0.04685131185775882,
+  "significant": false
+ },
+ {
+  "dataset": "ohr",
+  "strategy": "layout_aware",
+  "a": "selfbuilt",
+  "b": "langchain",
+  "n": 731,
+  "mean_diff": 0.004437433941703208,
+  "ci_low": -0.019234518463592438,
+  "ci_high": 0.02768832707124882,
+  "significant": false
+ },
+ {
+  "dataset": "ohr",
+  "strategy": "layout_aware",
+  "a": "selfbuilt",
+  "b": "chonkie",
+  "n": 731,
+  "mean_diff": -0.0027359781121751026,
+  "ci_low": -0.012311901504787962,
+  "ci_high": 0.005471956224350205,
+  "significant": false
+ },
+ {
+  "dataset": "ohr",
+  "strategy": "semantic",
+  "a": "selfbuilt",
+  "b": "langchain",
+  "n": 731,
+  "mean_diff": 0.0,
+  "ci_low": 0.0,
+  "ci_high": 0.0,
+  "significant": false
+ },
+ {
+  "dataset": "ohr",
+  "strategy": "semantic",
+  "a": "selfbuilt",
+  "b": "chonkie",
+  "n": 731,
+  "mean_diff": 0.004593883172792661,
+  "ci_low": -0.021566665990971918,
+  "ci_high": 0.0307213403975372,
+  "significant": false
+ }
+]

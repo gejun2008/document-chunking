@@ -1,0 +1,202 @@
+"""Benchmark the three implementation options on public datasets.
+
+    uv run python bench/run_bench.py                       # local bge-m3 + local Qwen3-4B
+    uv run python bench/run_bench.py --embedding-url https://.../v1 --embedding-model X \
+        --llm-url https://.../v1 --llm-model Y             # company services
+
+Results are appended to results/results.jsonl (re-runs skip finished cells).
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+import time
+from pathlib import Path
+
+import numpy as np
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "src"))
+sys.path.insert(0, str(ROOT / "bench"))
+
+from datasets import Dataset, load_chroma, load_ohr, load_qasper  # noqa: E402
+from local_models import CACHE_DIR, DiskCachedEmbedder, SqliteDict  # noqa: E402
+from metrics import evaluate  # noqa: E402
+
+from doc_chunking.chonkie_impl import ChonkieFixedSizeChunker, ChonkieMarkdownChunker, ChonkieSemanticChunker  # noqa: E402
+from doc_chunking.langchain_impl import (  # noqa: E402
+    ContextualEnrichmentTransformer,
+    LCFixedSizeChunker,
+    LCMarkdownChunker,
+    SemanticTextSplitter,
+)
+from doc_chunking.selfbuilt import ContextEnricher, FixedSizeChunker, MarkdownChunker, SemanticChunker  # noqa: E402
+from doc_chunking.text import count_tokens  # noqa: E402
+
+STRATEGIES = ["fixed_size", "layout_aware", "semantic", "context_enriched"]
+OPTIONS = ["selfbuilt", "chonkie", "langchain"]
+
+# Documents used for the (LLM-expensive) context-enrichment comparison.
+LITE = {
+    "chroma": {"state_of_the_union", "chatlogs", "wikitexts"},
+    "qasper": 15,  # first N papers
+    "ohr": 2,  # docs per domain
+}
+
+
+def lite_subset(ds: Dataset) -> Dataset:
+    spec = LITE[ds.name]
+    if isinstance(spec, set):
+        ids = spec
+    elif ds.name == "qasper":
+        ids = {d.id for d in ds.docs[:spec]}
+    else:
+        per: dict[str, list[str]] = {}
+        with_q = {q.doc_id for q in ds.queries}
+        for d in ds.docs:
+            if d.id in with_q:
+                per.setdefault(d.id.split("/")[0], []).append(d.id)
+        ids = {i for v in per.values() for i in v[:spec]}
+    return ds.subset(ids, f"{ds.name}-lite")
+
+
+def build(option: str, strategy: str, a, emb, llm, cache):
+    cs, ov = a.chunk_size, a.overlap
+    ctx = dict(llm=llm, cache=cache, max_workers=a.llm_workers, window_tokens=a.window_tokens)
+    if option == "selfbuilt":
+        return {
+            "fixed_size": lambda: FixedSizeChunker(cs, ov),
+            "layout_aware": lambda: MarkdownChunker(cs),
+            "semantic": lambda: SemanticChunker(emb, cs, breakpoint_percentile=a.percentile),
+            "context_enriched": lambda: ContextEnricher(FixedSizeChunker(cs, ov), **ctx),
+        }[strategy]()
+    if option == "chonkie":
+        return {
+            "fixed_size": lambda: ChonkieFixedSizeChunker(cs, ov),
+            "layout_aware": lambda: ChonkieMarkdownChunker(cs),
+            "semantic": lambda: ChonkieSemanticChunker(emb, cs, threshold=a.chonkie_threshold),
+            "context_enriched": lambda: ContextEnricher(ChonkieFixedSizeChunker(cs, ov), **ctx),
+        }[strategy]()
+    if option == "langchain":
+        return {
+            "fixed_size": lambda: LCFixedSizeChunker(cs, ov),
+            "layout_aware": lambda: LCMarkdownChunker(cs),
+            "semantic": lambda: SemanticTextSplitter(emb, cs, breakpoint_percentile=a.percentile),
+            "context_enriched": lambda: ContextualEnrichmentTransformer(LCFixedSizeChunker(cs, ov), llm, **{k: v for k, v in ctx.items() if k != "llm"}),
+        }[strategy]()
+    raise ValueError(option)
+
+
+def run_cell(ds: Dataset, option: str, strategy: str, a, emb, llm, cache) -> dict:
+    chunker = build(option, strategy, a, emb, llm, cache)
+    index, texts, sizes = [], [], []
+    t0 = time.time()
+    for d in ds.docs:
+        for c in chunker.chunk(d.text):
+            assert d.text[c.start : c.end] == c.text, f"bad offsets {option}/{strategy}/{d.id}"
+            n = count_tokens(c.text)
+            index.append((d.id, c.start, c.end, n))
+            texts.append(c.text_for_embedding)
+            sizes.append(n)
+    chunk_s = time.time() - t0
+    t1 = time.time()
+    cv = emb.embed(texts)
+    qv = emb.embed([q.question for q in ds.queries])
+    embed_s = time.time() - t1
+    m = evaluate(ds.queries, index, cv, qv, per_doc=ds.name.startswith("qasper"))
+    sizes_a = np.array(sizes)
+    return {
+        "dataset": ds.name,
+        "option": option,
+        "strategy": strategy,
+        "n_docs": len(ds.docs),
+        "n_queries": len(ds.queries),
+        "n_chunks": len(index),
+        "avg_tokens": float(sizes_a.mean()),
+        "p95_tokens": float(np.percentile(sizes_a, 95)),
+        "max_tokens": int(sizes_a.max()),
+        "chunk_seconds": round(chunk_s, 2),
+        "embed_seconds": round(embed_s, 2),
+        **m,
+    }
+
+
+def main() -> None:
+    p = argparse.ArgumentParser()
+    p.add_argument("--datasets", nargs="+", default=["chroma", "qasper", "ohr"])
+    p.add_argument("--options", nargs="+", default=OPTIONS)
+    p.add_argument("--strategies", nargs="+", default=STRATEGIES)
+    p.add_argument("--chunk-size", type=int, default=400)
+    p.add_argument("--overlap", type=int, default=50)
+    p.add_argument("--percentile", type=float, default=90.0)
+    p.add_argument("--chonkie-threshold", type=float, default=0.15)  # see calibrate_chonkie.py
+    p.add_argument("--window-tokens", type=int, default=1500)
+    p.add_argument("--llm-workers", type=int, default=8)
+    p.add_argument("--embedding-url")
+    p.add_argument("--embedding-model", default="BAAI/bge-m3")
+    p.add_argument("--llm-url")
+    p.add_argument("--llm-model", default="mlx-community/Qwen3-4B-Instruct-2507-4bit")
+    p.add_argument("--out", default=str(ROOT / "results" / "results.jsonl"))
+    a = p.parse_args()
+
+    if a.embedding_url:
+        from doc_chunking.clients import OpenAICompatibleEmbedder
+
+        inner = OpenAICompatibleEmbedder(a.embedding_url, model=a.embedding_model)
+    else:
+        from local_models import SentenceTransformerEmbedder
+
+        inner = SentenceTransformerEmbedder(a.embedding_model)
+    emb = DiskCachedEmbedder(inner, a.embedding_model)
+
+    llm = None
+    if "context_enriched" in a.strategies:
+        if a.llm_url:
+            from doc_chunking.clients import OpenAICompatibleChat
+
+            llm = OpenAICompatibleChat(a.llm_url, model=a.llm_model)
+        else:
+            import platform
+
+            if not (sys.platform == "darwin" and platform.machine() == "arm64"):
+                sys.exit("The local LLM needs Apple Silicon (mlx). Pass --llm-url/--llm-model for an OpenAI-compatible endpoint.")
+            from local_models import BatchedMLXChat
+
+            llm = BatchedMLXChat(a.llm_model, batch_size=a.llm_workers)
+    cache = SqliteDict(CACHE_DIR / f"ctx_{a.llm_model.replace('/', '_')}.sqlite")
+
+    out = Path(a.out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    done = set()
+    if out.exists():
+        for line in out.read_text().splitlines():
+            r = json.loads(line)
+            done.add((r["dataset"], r["option"], r["strategy"]))
+
+    loaders = {"chroma": load_chroma, "qasper": load_qasper, "ohr": load_ohr}
+    for name in a.datasets:
+        full = loaders[name]()
+        lite = lite_subset(full)
+        for strategy in a.strategies:
+            for option in a.options:
+                cells = [(lite, "fixed_size"), (lite, "context_enriched")] if strategy == "context_enriched" else [(full, strategy)]
+                for ds, strat in cells:
+                    if (ds.name, option, strat) in done:
+                        continue
+                    t = time.time()
+                    r = run_cell(ds, option, strat, a, emb, llm, cache)
+                    r["config"] = {k: getattr(a, k) for k in ("chunk_size", "overlap", "percentile", "chonkie_threshold", "window_tokens", "embedding_model", "llm_model")}
+                    with out.open("a") as f:
+                        f.write(json.dumps(r) + "\n")
+                    done.add((ds.name, option, strat))
+                    print(
+                        f"[{time.time() - t:6.1f}s] {ds.name:11s} {option:9s} {strat:16s} chunks={r['n_chunks']:5d} "
+                        f"avg_tok={r['avg_tokens']:5.0f} R@5={r['recall@5']:.3f} R@2k={r['recall@2000tok']:.3f} IoU@5={r['iou@5']:.3f}",
+                        flush=True,
+                    )
+
+
+if __name__ == "__main__":
+    main()
