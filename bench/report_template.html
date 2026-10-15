@@ -124,6 +124,16 @@ code { font: 13px var(--f-mono); background: var(--accent-soft); padding: 1px 5p
 
   <section>
     <div class="prose" style="display:grid;gap:10px">
+      <div class="eyebrow">显著性检验</div>
+      <h2>差距是不是噪声</h2>
+      <p class="note">chunk_size 400 时，对同一批问题做配对 bootstrap（有放回抽样 5,000 次），给出"自研 − 对方"在 2,000 token 预算下召回率差值的 95% 置信区间，单位为百分点。区间不跨 0 才算显著，标为加粗。区间宽度本身也说明了多大的差距算持平：Chroma 和 OHR-Bench 约 ±2 个点，问题较少的 Qasper 约 ±3–5 个点。</p>
+    </div>
+    <div class="tablebox"><table id="t-boot"></table></div>
+    <p class="note" id="boot-summary"></p>
+  </section>
+
+  <section>
+    <div class="prose" style="display:grid;gap:10px">
       <div class="eyebrow">Context enrichment</div>
       <h2>加上下文前后对比</h2>
       <p class="note">LLM 为每个 chunk 写一句"这段在文档中讲什么"的上下文，拼在 chunk 前再做 embedding。因为要逐个调用 LLM，只在精简子集上跑，基线是同一子集上各方案自己的 fixed_size。</p>
@@ -284,6 +294,31 @@ for (const [d, dn] of DS) for (const s of ["fixed_size", "layout_aware"]) {
   sweep.appendChild(box);
 }
 if (!sweep.children.length) sweep.innerHTML = `<p class="note">粒度对照数据尚未生成。</p>`;
+
+// bootstrap significance table
+(function () {
+  const t = document.getElementById("t-boot"), B = DATA.bootstrap || [];
+  if (!B.length) { t.closest(".tablebox").hidden = true; return; }
+  const f = v => (v >= 0 ? "+" : "−") + Math.abs(v * 100).toFixed(1);
+  const cell = r => {
+    if (!r) return "<td>–</td>";
+    if (r.ci_low === 0 && r.ci_high === 0) return `<td class="l" style="color:var(--ink-3)">0（相同切分）</td>`;
+    const txt = `${f(r.mean_diff)} [${f(r.ci_low)}, ${f(r.ci_high)}]`;
+    const cls = r.significant ? (r.mean_diff > 0 ? "pos best" : "neg best") : "";
+    return `<td class="${cls}">${txt}</td>`;
+  };
+  let h = `<thead><tr><th class="l">数据集</th><th class="l">策略</th><th>自研 − LangChain</th><th>自研 − chonkie</th></tr></thead><tbody>`;
+  for (const [d, dn] of DS) {
+    STRATS.forEach(([s], i) => {
+      const find = b => B.find(r => r.dataset === d && r.strategy === s && r.b === b);
+      h += `<tr class="${i === 0 ? "sep" : ""}"><td class="l">${i === 0 ? dn : ""}</td><td class="l">${s}</td>${cell(find("langchain"))}${cell(find("chonkie"))}</tr>`;
+    });
+  }
+  t.innerHTML = h + "</tbody>";
+  const worse = B.filter(r => r.significant && r.mean_diff < 0).length, better = B.filter(r => r.significant && r.mean_diff > 0);
+  document.getElementById("boot-summary").textContent =
+    `${B.length} 组比较里，自研显著更差的有 ${worse} 组，显著更好的有 ${better.length} 组（都是对 chonkie）。LangChain 方案的 semantic 是自研算法套接口，fixed_size 在 Qasper 上切出的 chunk 与自研相同，这些格子差值恒为 0。`;
+})();
 
 // context enrichment table
 (function () {

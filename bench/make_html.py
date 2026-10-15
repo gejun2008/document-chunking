@@ -20,7 +20,8 @@ fragments = RES / "report_fragments.json"
 if fragments.exists():
     for key, value in json.loads(fragments.read_text()).items():
         html = html.replace(f"<!--{key}-->", value)
-data = {"rows": uniq, "tokens": "约 111 万 token 语料"}
+boot = RES / "bootstrap.json"
+data = {"rows": uniq, "tokens": "约 111 万 token 语料", "bootstrap": json.loads(boot.read_text()) if boot.exists() else []}
 html = html.replace("/*DATA*/null", json.dumps(data, ensure_ascii=False))
 (RES / "chunking_report.html").write_text(html)
 print(f"{len(uniq)} rows -> results/chunking_report.html")
