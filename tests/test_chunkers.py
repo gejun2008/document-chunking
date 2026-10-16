@@ -61,7 +61,7 @@ class EchoLLM:
     def __init__(self):
         self.prompts = []
 
-    def complete(self, prompt, max_tokens=128):
+    def complete(self, prompt, max_tokens=128, system=None):
         self.prompts.append(prompt)
         return "This chunk is from the annual report."
 

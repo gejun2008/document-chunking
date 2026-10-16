@@ -31,7 +31,13 @@ else:  # e.g. a run with company models: no hand-written conclusions yet
         "可以和本地开源模型的主报告逐项对比，或运行 <code>bench/compare_runs.py</code> 查看差异。</p>",
     )
 boot = RES / "bootstrap.json"
-data = {"rows": uniq, "tokens": "约 111 万 token 语料", "bootstrap": json.loads(boot.read_text()) if boot.exists() else []}
+integ = RES / "span_integrity.json"
+data = {
+    "rows": uniq,
+    "tokens": "约 111 万 token 语料",
+    "bootstrap": json.loads(boot.read_text()) if boot.exists() else [],
+    "integrity": json.loads(integ.read_text()) if integ.exists() else [],
+}
 html = html.replace("/*DATA*/null", json.dumps(data, ensure_ascii=False))
 (RES / "chunking_report.html").write_text(html)
 print(f"{len(uniq)} rows -> results/chunking_report.html")

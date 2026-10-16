@@ -100,6 +100,10 @@ chunk_size=400 时的配对 bootstrap 结果（R@2k tok，单位为百分点，*
 - **18 组比较里，自研没有一组显著差于两个库。** 与 LangChain 的差异都在噪声范围内；对 chonkie 有 3 组显著更好。
 - **置信区间宽度也告诉我们什么叫"持平"：** Chroma 和 OHR-Bench 上约 ±2 个点，Qasper（问题较少）约 ±3–5 个点。报告里小于这个幅度的差异，都不应解读为谁更好。
 
+## 5.1 与旧实现（LlamaIndex）的对比方法
+
+旧服务的四种策略用它原来的默认参数重现：fixed_size 是 `TokenTextSplitter(512, 64, separator=" ")`，layout_aware 是 `MarkdownNodeParser`，父子块是父 1024/0、子 256/30，父块摘要用旧服务的 prompt 原文。切分由真实的 LlamaIndex 在一个临时环境里完成（`bench/legacy/export_llamaindex.py`，不进入本仓库依赖），只导出每个块在原文中的位置（所有块都能在原文中逐字找到），再用与其他方案相同的 embedding、LLM 和指标评测。semantic 两边是同一种算法，所以只对比断点参数（第 95 对第 90 百分位）。为区分"参数不同"和"切法不同"，自研 fixed_size 还按旧版同样的 512/64 跑了一次。
+
 ## 6. 局限：哪些结论不能外推
 
 1. **这是检索指标，不是端到端问答效果。** chunk 越小，检索越准，但交给 LLM 回答时上下文可能不够。chunk_size 最终要结合问答效果来定。

@@ -6,7 +6,7 @@ VERDICT = """
 <ol>
   <li><strong>方案 1（自研）和方案 3（LangChain + 自研）都可以选，chonkie 不推荐。</strong>1 和 3 的效果差距在统计噪声范围内，选哪个主要看团队情况：想少引入依赖（10 个对 34 个）、自己掌控升级，选 1；langchain-core 已在白名单、团队本来就用 LangChain，选 3。</li>
   <li><strong>默认用 layout_aware，chunk_size 建议 200–300，可以按文档类型调整。</strong>有标题的文档上它比 fixed_size 好，没有标题时两者持平。semantic 更慢，效果也没有更好，一般不需要。</li>
-  <li><strong>context enrich 先做成可选项。</strong>本地小模型测下来最多提升 5 个点，是否默认开启，等用公司的 LLM 测过效果和成本再定。</li>
+  <li><strong>保留父子块结构，父块摘要不建议默认开启。</strong>父子块不需要 LLM，命中子块后可以把父块交给 LLM 做抽取，自研版本的答案完整率也远高于旧版。以前的父块摘要在 6 组测试里全部降低了召回（−1 到 −13 个点）；"每个 chunk 一句上下文"的做法表现更好（−0.3 到 +5.2），可以作为可选项，用公司的 LLM 复核后再决定。</li>
 </ol>
 """
 

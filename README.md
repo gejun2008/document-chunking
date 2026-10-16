@@ -11,6 +11,13 @@ implementations so they can be compared on public benchmarks. None of them depen
 | semantic | `SemanticChunker` | `ChonkieSemanticChunker` | `SemanticTextSplitter` (LangChain `TextSplitter` over the self-built algorithm) |
 | context_enriched | `ContextEnricher` | self-built `ContextEnricher` over a chonkie chunker | `ContextualEnrichmentTransformer` (LangChain `BaseDocumentTransformer`) |
 
+Parent/child chunks (the legacy design) are in `selfbuilt.ParentChildChunker`: parents of
+`child_size * 4` tokens, optional 1–2 sentence parent summaries from an LLM (legacy prompt), children
+of `child_size` tokens inside each parent, stable IDs and `parent_id`/`prev_id`/`next_id` links.
+`doc_chunking.legacy_api.to_legacy_response(chunks, doc_id)` returns the legacy service response shape
+(`chunk_id`, `text` = embedded text, `raw_text` = original, `metadata.hierarchical_path/parent_id/prev_id/next_id`)
+plus offsets, `doc_id` and the parents' text.
+
 Every chunker exposes `chunk(text) -> list[Chunk]`. A `Chunk` has the original `text`, exact
 `start`/`end` character offsets, `metadata` (e.g. `heading_path`, `context`) and `embed_text`,
 the string to send to the embedding model.
@@ -77,6 +84,11 @@ uv run python bench/compare_runs.py results results/company   # R@2k side by sid
 Optional: `EMBEDDING_BATCH_SIZE` (default 64) if the gateway limits batch size, `LLM_WORKERS` (default 8)
 for parallel LLM calls, `OUT_DIR` for another output folder. Finished cells are skipped, so an interrupted
 run can simply be started again.
+
+Comparison with the legacy LlamaIndex service: `bench/legacy/export_llamaindex.py` replays the legacy
+configuration with the real LlamaIndex in a throwaway environment (offsets saved in `results/legacy_chunks/`),
+then `run_bench.py --options legacy selfbuilt_512 selfbuilt --strategies fixed_size layout_aware semantic parent_child parent_summary --out results/results_legacy.jsonl`
+scores it like every other option.
 
 Why these datasets and metrics, quality checks, significance tests and limitations:
 [docs/benchmark-methodology.md](docs/benchmark-methodology.md). Report: `results/chunking_report.html`.

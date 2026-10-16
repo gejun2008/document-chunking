@@ -1,0 +1,362 @@
+[
+ {
+  "dataset": "chroma",
+  "option": "selfbuilt",
+  "strategy": "fixed_size",
+  "level": "chunk",
+  "whole_all": 0.9835443037974684,
+  "n_all": 790
+ },
+ {
+  "dataset": "chroma",
+  "option": "chonkie",
+  "strategy": "fixed_size",
+  "level": "chunk",
+  "whole_all": 0.9962025316455696,
+  "n_all": 790
+ },
+ {
+  "dataset": "chroma",
+  "option": "langchain",
+  "strategy": "fixed_size",
+  "level": "chunk",
+  "whole_all": 0.9898734177215189,
+  "n_all": 790
+ },
+ {
+  "dataset": "chroma",
+  "option": "legacy",
+  "strategy": "fixed_size",
+  "level": "chunk",
+  "whole_all": 0.9987341772151899,
+  "n_all": 790
+ },
+ {
+  "dataset": "chroma",
+  "option": "selfbuilt",
+  "strategy": "layout_aware",
+  "level": "chunk",
+  "whole_all": 0.9569620253164557,
+  "n_all": 790
+ },
+ {
+  "dataset": "chroma",
+  "option": "chonkie",
+  "strategy": "layout_aware",
+  "level": "chunk",
+  "whole_all": 0.9696202531645569,
+  "n_all": 790
+ },
+ {
+  "dataset": "chroma",
+  "option": "langchain",
+  "strategy": "layout_aware",
+  "level": "chunk",
+  "whole_all": 0.9734177215189873,
+  "n_all": 790
+ },
+ {
+  "dataset": "chroma",
+  "option": "legacy",
+  "strategy": "layout_aware",
+  "level": "chunk",
+  "whole_all": 1.0,
+  "n_all": 790
+ },
+ {
+  "dataset": "chroma",
+  "option": "selfbuilt",
+  "strategy": "parent_child",
+  "level": "child",
+  "whole_all": 0.9607594936708861,
+  "n_all": 790
+ },
+ {
+  "dataset": "chroma",
+  "option": "selfbuilt",
+  "strategy": "parent_child",
+  "level": "parent",
+  "whole_all": 0.9962025316455696,
+  "n_all": 790
+ },
+ {
+  "dataset": "chroma",
+  "option": "legacy",
+  "strategy": "parent_child",
+  "level": "child",
+  "whole_all": 0.9177215189873418,
+  "n_all": 790
+ },
+ {
+  "dataset": "chroma",
+  "option": "legacy",
+  "strategy": "parent_child",
+  "level": "parent",
+  "whole_all": 0.9658227848101266,
+  "n_all": 790
+ },
+ {
+  "dataset": "qasper",
+  "option": "selfbuilt",
+  "strategy": "fixed_size",
+  "level": "chunk",
+  "whole_all": 0.9949494949494949,
+  "n_all": 396
+ },
+ {
+  "dataset": "qasper",
+  "option": "chonkie",
+  "strategy": "fixed_size",
+  "level": "chunk",
+  "whole_all": 0.851010101010101,
+  "n_all": 396
+ },
+ {
+  "dataset": "qasper",
+  "option": "langchain",
+  "strategy": "fixed_size",
+  "level": "chunk",
+  "whole_all": 0.9949494949494949,
+  "n_all": 396
+ },
+ {
+  "dataset": "qasper",
+  "option": "legacy",
+  "strategy": "fixed_size",
+  "level": "chunk",
+  "whole_all": 0.8939393939393939,
+  "n_all": 396
+ },
+ {
+  "dataset": "qasper",
+  "option": "selfbuilt",
+  "strategy": "layout_aware",
+  "level": "chunk",
+  "whole_all": 0.9949494949494949,
+  "n_all": 396
+ },
+ {
+  "dataset": "qasper",
+  "option": "chonkie",
+  "strategy": "layout_aware",
+  "level": "chunk",
+  "whole_all": 0.9873737373737373,
+  "n_all": 396
+ },
+ {
+  "dataset": "qasper",
+  "option": "langchain",
+  "strategy": "layout_aware",
+  "level": "chunk",
+  "whole_all": 0.9924242424242424,
+  "n_all": 396
+ },
+ {
+  "dataset": "qasper",
+  "option": "legacy",
+  "strategy": "layout_aware",
+  "level": "chunk",
+  "whole_all": 1.0,
+  "n_all": 396
+ },
+ {
+  "dataset": "qasper",
+  "option": "selfbuilt",
+  "strategy": "parent_child",
+  "level": "child",
+  "whole_all": 0.9722222222222222,
+  "n_all": 396
+ },
+ {
+  "dataset": "qasper",
+  "option": "selfbuilt",
+  "strategy": "parent_child",
+  "level": "parent",
+  "whole_all": 1.0,
+  "n_all": 396
+ },
+ {
+  "dataset": "qasper",
+  "option": "legacy",
+  "strategy": "parent_child",
+  "level": "child",
+  "whole_all": 0.6237373737373737,
+  "n_all": 396
+ },
+ {
+  "dataset": "qasper",
+  "option": "legacy",
+  "strategy": "parent_child",
+  "level": "parent",
+  "whole_all": 0.9217171717171717,
+  "n_all": 396
+ },
+ {
+  "dataset": "ohr",
+  "option": "selfbuilt",
+  "strategy": "fixed_size",
+  "level": "chunk",
+  "whole_all": 1.0,
+  "whole_text": 1.0,
+  "whole_table": 1.0,
+  "whole_equation": 1.0,
+  "n_all": 731,
+  "n_text": 578,
+  "n_table": 130,
+  "n_equation": 23
+ },
+ {
+  "dataset": "ohr",
+  "option": "chonkie",
+  "strategy": "fixed_size",
+  "level": "chunk",
+  "whole_all": 0.9972640218878249,
+  "whole_text": 0.9965397923875432,
+  "whole_table": 1.0,
+  "whole_equation": 1.0,
+  "n_all": 731,
+  "n_text": 578,
+  "n_table": 130,
+  "n_equation": 23
+ },
+ {
+  "dataset": "ohr",
+  "option": "langchain",
+  "strategy": "fixed_size",
+  "level": "chunk",
+  "whole_all": 1.0,
+  "whole_text": 1.0,
+  "whole_table": 1.0,
+  "whole_equation": 1.0,
+  "n_all": 731,
+  "n_text": 578,
+  "n_table": 130,
+  "n_equation": 23
+ },
+ {
+  "dataset": "ohr",
+  "option": "legacy",
+  "strategy": "fixed_size",
+  "level": "chunk",
+  "whole_all": 0.9945280437756497,
+  "whole_text": 0.9965397923875432,
+  "whole_table": 1.0,
+  "whole_equation": 0.9130434782608695,
+  "n_all": 731,
+  "n_text": 578,
+  "n_table": 130,
+  "n_equation": 23
+ },
+ {
+  "dataset": "ohr",
+  "option": "selfbuilt",
+  "strategy": "layout_aware",
+  "level": "chunk",
+  "whole_all": 1.0,
+  "whole_text": 1.0,
+  "whole_table": 1.0,
+  "whole_equation": 1.0,
+  "n_all": 731,
+  "n_text": 578,
+  "n_table": 130,
+  "n_equation": 23
+ },
+ {
+  "dataset": "ohr",
+  "option": "chonkie",
+  "strategy": "layout_aware",
+  "level": "chunk",
+  "whole_all": 1.0,
+  "whole_text": 1.0,
+  "whole_table": 1.0,
+  "whole_equation": 1.0,
+  "n_all": 731,
+  "n_text": 578,
+  "n_table": 130,
+  "n_equation": 23
+ },
+ {
+  "dataset": "ohr",
+  "option": "langchain",
+  "strategy": "layout_aware",
+  "level": "chunk",
+  "whole_all": 0.9958960328317373,
+  "whole_text": 0.9982698961937716,
+  "whole_table": 0.9923076923076923,
+  "whole_equation": 0.9565217391304348,
+  "n_all": 731,
+  "n_text": 578,
+  "n_table": 130,
+  "n_equation": 23
+ },
+ {
+  "dataset": "ohr",
+  "option": "legacy",
+  "strategy": "layout_aware",
+  "level": "chunk",
+  "whole_all": 1.0,
+  "whole_text": 1.0,
+  "whole_table": 1.0,
+  "whole_equation": 1.0,
+  "n_all": 731,
+  "n_text": 578,
+  "n_table": 130,
+  "n_equation": 23
+ },
+ {
+  "dataset": "ohr",
+  "option": "selfbuilt",
+  "strategy": "parent_child",
+  "level": "child",
+  "whole_all": 1.0,
+  "whole_text": 1.0,
+  "whole_table": 1.0,
+  "whole_equation": 1.0,
+  "n_all": 731,
+  "n_text": 578,
+  "n_table": 130,
+  "n_equation": 23
+ },
+ {
+  "dataset": "ohr",
+  "option": "selfbuilt",
+  "strategy": "parent_child",
+  "level": "parent",
+  "whole_all": 1.0,
+  "whole_text": 1.0,
+  "whole_table": 1.0,
+  "whole_equation": 1.0,
+  "n_all": 731,
+  "n_text": 578,
+  "n_table": 130,
+  "n_equation": 23
+ },
+ {
+  "dataset": "ohr",
+  "option": "legacy",
+  "strategy": "parent_child",
+  "level": "child",
+  "whole_all": 0.9138166894664843,
+  "whole_text": 0.9221453287197232,
+  "whole_table": 0.8923076923076924,
+  "whole_equation": 0.8260869565217391,
+  "n_all": 731,
+  "n_text": 578,
+  "n_table": 130,
+  "n_equation": 23
+ },
+ {
+  "dataset": "ohr",
+  "option": "legacy",
+  "strategy": "parent_child",
+  "level": "parent",
+  "whole_all": 0.9712722298221614,
+  "whole_text": 0.967128027681661,
+  "whole_table": 0.9923076923076923,
+  "whole_equation": 0.9565217391304348,
+  "n_all": 731,
+  "n_text": 578,
+  "n_table": 130,
+  "n_equation": 23
+ }
+]

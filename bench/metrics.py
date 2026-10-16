@@ -87,9 +87,12 @@ def evaluate(
     budgets: tuple[int, ...] = (1000, 2000),
     per_doc: bool = False,
     per_query: bool = False,
+    expand: list[tuple[str, int, int, int]] | None = None,
 ) -> dict[str, float] | list[dict[str, float]]:
     """``per_doc=True`` retrieves only among chunks of the query's own document
-    (single-document QA such as Qasper, whose questions do not name the paper)."""
+    (single-document QA such as Qasper, whose questions do not name the paper).
+    ``expand[i]`` replaces retrieved chunk ``i`` by a larger span (its parent);
+    repeated parents are counted once, in rank order."""
     sims = query_vecs @ chunk_vecs.T
     if per_doc:
         doc_of = np.array([c[0] for c in chunk_index])
@@ -101,6 +104,8 @@ def evaluate(
     for qi, q in enumerate(queries):
         order = top[qi][np.argsort(-sims[qi, top[qi]])]
         ranked = [chunk_index[i] for i in order if np.isfinite(sims[qi, i])]
+        if expand is not None:
+            ranked = list(dict.fromkeys(expand[i] for i in order if np.isfinite(sims[qi, i])))
         rows.append(score_query(q.doc_id, q.spans, ranked, ks, budgets))
     if per_query:
         return rows

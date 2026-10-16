@@ -121,12 +121,13 @@ class MLXChat:
         self.model, self.tokenizer = load(model)
         self._lock = threading.Lock()
 
-    def complete(self, prompt: str, max_tokens: int = 128) -> str:
+    def _messages(self, prompt: str, system: str | None) -> list[dict]:
+        return ([{"role": "system", "content": system}] if system else []) + [{"role": "user", "content": prompt}]
+
+    def complete(self, prompt: str, max_tokens: int = 128, system: str | None = None) -> str:
         from mlx_lm import generate
 
-        p = self.tokenizer.apply_chat_template(
-            [{"role": "user", "content": prompt}], add_generation_prompt=True, tokenize=False
-        )
+        p = self.tokenizer.apply_chat_template(self._messages(prompt, system), add_generation_prompt=True, tokenize=False)
         with self._lock:
             return generate(self.model, self.tokenizer, p, max_tokens=max_tokens).strip()
 
@@ -146,8 +147,8 @@ class BatchedMLXChat(MLXChat):
         self._q: "queue.Queue[tuple[list[int], int, dict]]" = queue.Queue()
         threading.Thread(target=self._worker, daemon=True).start()
 
-    def complete(self, prompt: str, max_tokens: int = 128) -> str:
-        ids = self.tokenizer.apply_chat_template([{"role": "user", "content": prompt}], add_generation_prompt=True)
+    def complete(self, prompt: str, max_tokens: int = 128, system: str | None = None) -> str:
+        ids = self.tokenizer.apply_chat_template(self._messages(prompt, system), add_generation_prompt=True)
         slot: dict = {"done": threading.Event()}
         self._q.put((ids, max_tokens, slot))
         slot["done"].wait()

@@ -22,6 +22,7 @@ class Chunk:
     index: int = 0
     metadata: dict[str, Any] = field(default_factory=dict)
     embed_text: str | None = None
+    id: str = ""  # stable ID, see doc_chunking.ids.assign_stable_ids
 
     @property
     def text_for_embedding(self) -> str:

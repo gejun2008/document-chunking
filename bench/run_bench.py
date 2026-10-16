@@ -10,6 +10,7 @@ Results are appended to results/results.jsonl (re-runs skip finished cells).
 from __future__ import annotations
 
 import argparse
+import inspect
 import json
 import sys
 import time
@@ -32,11 +33,22 @@ from doc_chunking.langchain_impl import (  # noqa: E402
     LCMarkdownChunker,
     SemanticTextSplitter,
 )
-from doc_chunking.selfbuilt import ContextEnricher, FixedSizeChunker, MarkdownChunker, SemanticChunker  # noqa: E402
+from doc_chunking.selfbuilt import (  # noqa: E402
+    ContextEnricher,
+    FixedSizeChunker,
+    MarkdownChunker,
+    ParentChildChunker,
+    SemanticChunker,
+)
 from doc_chunking.text import count_tokens  # noqa: E402
 
 STRATEGIES = ["fixed_size", "layout_aware", "semantic", "context_enriched"]
 OPTIONS = ["selfbuilt", "chonkie", "langchain"]
+# Strategies that need an LLM run on the lite subsets, next to their no-LLM base strategy.
+LLM_STRATEGIES = {"context_enriched": "fixed_size", "parent_summary": "parent_child"}
+# Extra options for the comparison with the legacy LlamaIndex service (bench/legacy/):
+#   legacy        chunks exported from the real legacy configuration; semantic = same algorithm, legacy p95
+#   selfbuilt_512 self-built fixed_size at the legacy 512/64 setting
 
 # Documents used for the (LLM-expensive) context-enrichment comparison.
 LITE = {
@@ -62,9 +74,27 @@ def lite_subset(ds: Dataset) -> Dataset:
     return ds.subset(ids, f"{ds.name}-lite")
 
 
-def build(option: str, strategy: str, a, emb, llm, cache):
+def build(option: str, strategy: str, a, emb, llm, cache, dataset: str = ""):
     cs, ov = a.chunk_size, a.overlap
     ctx = dict(llm=llm, cache=cache, max_workers=a.llm_workers, window_tokens=a.window_tokens)
+    # parent/child defaults follow the legacy service: children 256/30, parents 4x (1024), no parent overlap
+    if strategy == "parent_child" and option == "selfbuilt":
+        return ParentChildChunker()
+    if strategy == "parent_summary" and option == "selfbuilt":
+        return ParentChildChunker(llm=llm, cache=cache, max_workers=a.llm_workers)
+    if option == "legacy":
+        from legacy.precomputed import LegacyFlat, LegacyParentChild
+
+        if strategy in ("fixed_size", "layout_aware"):
+            return LegacyFlat(dataset, strategy)
+        if strategy == "semantic":
+            return SemanticChunker(emb, cs, breakpoint_percentile=95.0)
+        if strategy == "parent_child":
+            return LegacyParentChild(dataset)
+        if strategy == "parent_summary":
+            return LegacyParentChild(dataset, llm=llm, cache=cache, max_workers=a.llm_workers)
+    if option == "selfbuilt_512" and strategy == "fixed_size":
+        return FixedSizeChunker(512, 64)
     if option == "selfbuilt":
         return {
             "fixed_size": lambda: FixedSizeChunker(cs, ov),
@@ -90,22 +120,33 @@ def build(option: str, strategy: str, a, emb, llm, cache):
 
 
 def run_cell(ds: Dataset, option: str, strategy: str, a, emb, llm, cache) -> dict:
-    chunker = build(option, strategy, a, emb, llm, cache)
-    index, texts, sizes = [], [], []
+    chunker = build(option, strategy, a, emb, llm, cache, ds.name)
+    takes_doc_id = "doc_id" in inspect.signature(chunker.chunk).parameters
+    index, texts, sizes, parent_items = [], [], [], []
     t0 = time.time()
     for d in ds.docs:
-        for c in chunker.chunk(d.text):
+        chunks = chunker.chunk(d.text, doc_id=d.id) if takes_doc_id else chunker.chunk(d.text)
+        parents = {c.id: c for c in chunks if c.metadata.get("level") == "parent"}
+        for c in chunks:
             assert d.text[c.start : c.end] == c.text, f"bad offsets {option}/{strategy}/{d.id}"
+            if c.metadata.get("level") == "parent":
+                continue  # only children are indexed; parents are what a child expands to
             n = count_tokens(c.text)
             index.append((d.id, c.start, c.end, n))
             texts.append(c.text_for_embedding)
             sizes.append(n)
+            if parents:
+                p = parents[c.metadata["parent_id"]]
+                parent_items.append((d.id, p.start, p.end, count_tokens(p.text)))
     chunk_s = time.time() - t0
     t1 = time.time()
     cv = emb.embed(texts)
     qv = emb.embed([q.question for q in ds.queries])
     embed_s = time.time() - t1
-    m = evaluate(ds.queries, index, cv, qv, per_doc=ds.name.startswith("qasper"))
+    per_doc = ds.name.startswith("qasper")
+    m = evaluate(ds.queries, index, cv, qv, per_doc=per_doc)
+    if parent_items:  # retrieve children, hand their (deduplicated) parents to the LLM
+        m.update({f"parent_{k}": v for k, v in evaluate(ds.queries, index, cv, qv, per_doc=per_doc, expand=parent_items).items()})
     sizes_a = np.array(sizes)
     return {
         "dataset": ds.name,
@@ -174,7 +215,7 @@ def main() -> None:
     a = p.parse_args()
 
     emb = make_embedder(a)
-    llm = make_llm(a) if "context_enriched" in a.strategies else None
+    llm = make_llm(a) if set(a.strategies) & set(LLM_STRATEGIES) else None
     cache = SqliteDict(CACHE_DIR / f"ctx_{a.llm_model.replace('/', '_')}.sqlite")
 
     out = Path(a.out)
@@ -191,7 +232,8 @@ def main() -> None:
         lite = lite_subset(full)
         for strategy in a.strategies:
             for option in a.options:
-                cells = [(lite, "fixed_size"), (lite, "context_enriched")] if strategy == "context_enriched" else [(full, strategy)]
+                base = LLM_STRATEGIES.get(strategy)
+                cells = [(lite, base), (lite, strategy)] if base else [(full, strategy)]
                 for ds, strat in cells:
                     if (ds.name, option, strat) in done:
                         continue
@@ -202,7 +244,7 @@ def main() -> None:
                         f.write(json.dumps(r) + "\n")
                     done.add((ds.name, option, strat))
                     print(
-                        f"[{time.time() - t:6.1f}s] {ds.name:11s} {option:9s} {strat:16s} chunks={r['n_chunks']:5d} "
+                        f"[{time.time() - t:6.1f}s] {ds.name:11s} {option:13s} {strat:16s} chunks={r['n_chunks']:5d} "
                         f"avg_tok={r['avg_tokens']:5.0f} R@5={r['recall@5']:.3f} R@2k={r['recall@2000tok']:.3f} IoU@5={r['iou@5']:.3f}",
                         flush=True,
                     )

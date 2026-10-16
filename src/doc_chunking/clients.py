@@ -24,7 +24,7 @@ class Embedder(Protocol):
 
 
 class LLM(Protocol):
-    def complete(self, prompt: str, max_tokens: int = 128) -> str: ...
+    def complete(self, prompt: str, max_tokens: int = 128, system: str | None = None) -> str: ...
 
 
 def _post_with_retry(client: httpx.Client, url: str, payload: dict, retries: int) -> dict:
@@ -123,13 +123,14 @@ class OpenAICompatibleChat:
         self.temperature = temperature
         self._client = httpx.Client(timeout=timeout, headers=headers)
 
-    def complete(self, prompt: str, max_tokens: int = 128) -> str:
+    def complete(self, prompt: str, max_tokens: int = 128, system: str | None = None) -> str:
+        messages = ([{"role": "system", "content": system}] if system else []) + [{"role": "user", "content": prompt}]
         data = _post_with_retry(
             self._client,
             f"{self.base_url}/chat/completions",
             {
                 "model": self.model,
-                "messages": [{"role": "user", "content": prompt}],
+                "messages": messages,
                 "max_tokens": max_tokens,
                 "temperature": self.temperature,
             },

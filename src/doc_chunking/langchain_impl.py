@@ -154,8 +154,8 @@ class _LCLLM:
     def __init__(self, model: Any):
         self.model = model
 
-    def complete(self, prompt: str, max_tokens: int = 128) -> str:
-        out = self.model.invoke(prompt)
+    def complete(self, prompt: str, max_tokens: int = 128, system: str | None = None) -> str:
+        out = self.model.invoke([("system", system), ("human", prompt)] if system else prompt)
         return getattr(out, "content", out).strip()
 
 

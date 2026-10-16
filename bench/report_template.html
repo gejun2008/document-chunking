@@ -126,7 +126,7 @@ code { font: 13px var(--f-mono); background: var(--accent-soft); padding: 1px 5p
         </tbody>
       </table>
     </div>
-    <p class="note">本报告里的 context_enriched 是每个 chunk 调用一次 LLM 的做法。按以前的设计，这一策略接下来会改成"父子块 + 父块摘要"：先切大的父块，每个父块调用一次 LLM 生成摘要，再在父块内切子块，把父块摘要加在每个子块前做 embedding，同时保留子块原文、稳定 ID 和父子映射。</p>
+    <p class="note">另外还实现了以前设计的"父子块 + 父块摘要"（<code>ParentChildChunker</code>）：先切约 1,024 token 的父块，可选地为每个父块调用一次 LLM 生成 1–2 句摘要（prompt 与旧版相同），再在父块内切 256 token 的子块，embedding 文本为 <code>Context summary: {摘要}</code> 加子块原文。每个块带稳定 ID、文档 ID、原文位置，子块带 <code>parent_id</code> 和前后块 ID。<code>legacy_api.to_legacy_response()</code> 按旧服务的字段（<code>chunk_id</code>、<code>text</code>、<code>raw_text</code>、<code>metadata</code>）输出，另外附上父块原文，服务层可以据此还原父块。</p>
   </section>
 
   <section>
@@ -152,6 +152,19 @@ code { font: 13px var(--f-mono); background: var(--accent-soft); padding: 1px 5p
       <p class="note">各实现切出的平均 chunk 大小不一样，而 chunk 越小，在固定预算下通常越占优。这里把 chunk_size 设为 200 / 300 / 400 各跑一遍，横轴是实际平均 token 数，纵轴是召回率。同一横坐标附近的点才是公平比较。</p>
     </div>
     <div class="charts" id="charts-sweep"></div>
+  </section>
+
+  <section>
+    <div class="prose" style="display:grid;gap:10px">
+      <div class="eyebrow">与旧实现对比</div>
+      <h2>新实现比以前的 LlamaIndex 版本好多少</h2>
+      <p class="note">"旧版"是用以前服务的默认参数，在临时环境里运行真实的 LlamaIndex 切出的块（<code>bench/legacy/export_llamaindex.py</code>），再用和其他方案完全相同的 embedding 和指标评测。semantic 两边是同一个算法，只能比较参数。数值是 2,000 token 预算下的召回率，括号里是平均每块 token 数。</p>
+    </div>
+    <div class="tablebox"><table id="t-legacy"></table></div>
+    <p class="note" id="legacy-note"></p>
+    <h3>答案有没有被切断</h3>
+    <p class="note">做字段抽取时，一个被切成两半的值从哪一半都抽不出来。下表统计标准答案完整落在同一个块里的比例；父子块分别看子块和父块。OHR-Bench 另外单列表格类问题。旧版 layout_aware 的 100% 来自块大小没有上限（没有标题时整篇文档就是一个块），不能算优点。</p>
+    <div class="tablebox"><table id="t-integrity"></table></div>
   </section>
 
   <section>
@@ -329,6 +342,67 @@ for (const [d, dn] of DS) for (const s of ["fixed_size", "layout_aware"]) {
   sweep.appendChild(box);
 }
 if (!sweep.children.length) sweep.innerHTML = `<p class="note">粒度对照数据尚未生成。</p>`;
+
+// legacy comparison
+(function () {
+  const t = document.getElementById("t-legacy");
+  const L = (d, o, s, cs) => rows.find(r => r.dataset === d && r.option === o && r.strategy === s && (cs == null || r.config.chunk_size === cs));
+  const v = (r, key = "recall@2000tok") => r ? `${pct(r[key])} <span style="color:var(--ink-3)">(${Math.round(r.avg_tokens)})</span>` : "–";
+  const LINES = [
+    ["fixed_size", "旧版：TokenTextSplitter 512/64，按空格切", d => L(d, "legacy", "fixed_size")],
+    ["", "自研：同样 512/64", d => L(d, "selfbuilt_512", "fixed_size")],
+    ["", "自研：推荐配置 400/50", d => L(d, "selfbuilt", "fixed_size", 400)],
+    ["layout_aware", "旧版：MarkdownNodeParser（章节大小无上限）", d => L(d, "legacy", "layout_aware")],
+    ["", "自研：Markdown 语法树", d => L(d, "selfbuilt", "layout_aware", 400)],
+    ["semantic", "旧参数：第 95 百分位断点", d => L(d, "legacy", "semantic")],
+    ["", "现用：第 90 百分位断点", d => L(d, "selfbuilt", "semantic", 400)],
+    ["父子块（检索子块）", "旧版：父 1024/0，子 256/30", d => L(d, "legacy", "parent_child")],
+    ["", "自研：同样参数，递归切分", d => L(d, "selfbuilt", "parent_child")],
+  ];
+  let h = `<thead><tr><th class="l">策略</th><th class="l">版本</th>${DS.map(([, dn]) => `<th>${dn}</th>`).join("")}</tr></thead><tbody>`;
+  LINES.forEach(([s, label, f], i) => {
+    h += `<tr class="${s ? "sep" : ""}"><td class="l">${s}</td><td class="l" style="white-space:normal">${label}</td>${DS.map(([d]) => `<td>${v(f(d))}</td>`).join("")}</tr>`;
+  });
+  const P = [["父子块（命中子块后返回父块）", "旧版", "legacy"], ["", "自研", "selfbuilt"]];
+  P.forEach(([s, label, o]) => {
+    h += `<tr class="${s ? "sep" : ""}"><td class="l" style="white-space:normal">${s}</td><td class="l">${label}</td>${DS.map(([d]) => { const r = L(d, o, "parent_child"); return `<td>${r ? `${pct(r["parent_recall@2000tok"])} / ${pct(r["parent_recall@5"])}` : "–"}</td>`; }).join("")}</tr>`;
+  });
+  const S = [["父块摘要（精简子集）", "旧版：不加摘要 → 加摘要", "legacy"], ["", "自研：不加摘要 → 加摘要", "selfbuilt"]];
+  S.forEach(([s, label, o]) => {
+    h += `<tr class="${s ? "sep" : ""}"><td class="l" style="white-space:normal">${s}</td><td class="l" style="white-space:normal">${label}</td>${DS.map(([d]) => {
+      const b = L(d + "-lite", o, "parent_child"), e = L(d + "-lite", o, "parent_summary");
+      if (!b || !e) return "<td>–</td>";
+      const dd = e["recall@2000tok"] - b["recall@2000tok"];
+      return `<td>${pct(b["recall@2000tok"])} → ${pct(e["recall@2000tok"])} <span class="${dd > 0.005 ? "pos" : dd < -0.005 ? "neg" : ""}">(${dd >= 0 ? "+" : "−"}${Math.abs(dd * 100).toFixed(1)})</span></td>`;
+    }).join("")}</tr>`;
+  });
+  t.innerHTML = h + "</tbody>";
+  document.getElementById("legacy-note").textContent = "\"返回父块\"一行是两个数：2,000 token 预算下的召回率 / 取前 5 个父块的召回率。一个父块约 1,000 token，2,000 token 只放得下一两个父块，所以前一个数偏低。旧版 layout_aware 在没有标题的文档上会整篇成为一个块（Chroma 平均 6.5 万 token），超出 embedding 模型的输入上限，也无法直接交给 LLM 抽取。";
+})();
+
+// evidence kept whole
+(function () {
+  const t = document.getElementById("t-integrity"), I = DATA.integrity || [];
+  if (!I.length) { t.closest(".tablebox").hidden = true; return; }
+  const g = (d, o, s, lv) => I.find(r => r.dataset === d && r.option === o && r.strategy === s && r.level === lv);
+  const LINES = [
+    ["fixed_size", "chunk", [["旧版", "legacy"], ["自研", "selfbuilt"], ["LangChain", "langchain"], ["chonkie", "chonkie"]]],
+    ["layout_aware", "chunk", [["旧版", "legacy"], ["自研", "selfbuilt"], ["LangChain", "langchain"], ["chonkie", "chonkie"]]],
+    ["父子块 · 子块", "child", [["旧版", "legacy"], ["自研", "selfbuilt"]]],
+    ["父子块 · 父块", "parent", [["旧版", "legacy"], ["自研", "selfbuilt"]]],
+  ];
+  const f = x => x == null ? "–" : (x * 100).toFixed(1);
+  let h = `<thead><tr><th class="l">策略</th><th class="l">方案</th>${DS.map(([, dn]) => `<th>${dn}</th>`).join("")}<th>OHR 表格类</th></tr></thead><tbody>`;
+  for (const [label, lv, opts] of LINES) {
+    const sname = label.startsWith("父子块") ? "parent_child" : label;
+    opts.forEach(([on, o], i) => {
+      const vals = DS.map(([d]) => g(d, o, sname, lv)?.whole_all);
+      const tab = g("ohr", o, sname, lv)?.whole_table;
+      h += `<tr class="${i === 0 ? "sep" : ""}"><td class="l">${i === 0 ? label : ""}</td><td class="l">${on}</td>${vals.map(x => `<td>${f(x)}</td>`).join("")}<td>${f(tab)}</td></tr>`;
+    });
+  }
+  t.innerHTML = h + "</tbody>";
+})();
 
 // bootstrap significance table
 (function () {
