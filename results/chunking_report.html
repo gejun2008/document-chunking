@@ -105,6 +105,38 @@ code { font: 13px var(--f-mono); background: var(--accent-soft); padding: 1px 5p
 
   <section>
     <div class="prose" style="display:grid;gap:10px">
+      <div class="eyebrow">实现方式</div>
+      <h2>每种策略在三个方案里怎么实现</h2>
+      <p class="note">chunk 大小统一按 tiktoken（cl100k_base）计数，所有方案输出的 chunk 都保留原文和在文档中的精确位置。</p>
+    </div>
+    <div class="tablebox">
+      <table class="cmp">
+        <thead><tr><th class="l">策略</th><th class="l"><span class="dot" style="background:var(--s1)"></span>自研</th><th class="l"><span class="dot" style="background:var(--s2)"></span>chonkie</th><th class="l"><span class="dot" style="background:var(--s3)"></span>LangChain + 自研</th></tr></thead>
+        <tbody>
+          <tr><td>fixed_size<br><small style="font-weight:400;color:var(--ink-3)">不需要外部服务</small></td>
+            <td>递归切分：先按段落，过长再依次按行、句子（中英文标点）、词、token 切，然后合并到 chunk_size；overlap 按整句保留</td>
+            <td><code>SentenceChunker</code>：按句子打包到 chunk_size，带 overlap；分隔符补充了中文标点</td>
+            <td><code>RecursiveCharacterTextSplitter</code>（tiktoken 计数），分隔符补充了中文标点；库返回的位置在有 overlap 时不准，由我们重新定位</td></tr>
+          <tr><td>layout_aware<br><small style="font-weight:400;color:var(--ink-3)">不需要外部服务</small></td>
+            <td>用 markdown-it-py 解析 Markdown 语法树，按 1–3 级标题切章节；很短的章节合并；表格和代码块保持完整；超长章节回退到递归切分；标题路径加在 embedding 文本前</td>
+            <td><code>MarkdownChef</code> 拆出表格和代码块并保持完整，其余文本用 <code>RecursiveChunker</code> 加 Markdown 规则切分（官方规则运行时要联网下载，已内置）</td>
+            <td><code>MarkdownHeaderTextSplitter</code> 按 #/##/### 标题切，超长章节再用 <code>RecursiveCharacterTextSplitter</code>；标题路径加在 embedding 文本前；库会改写换行和空白，位置由我们重新定位</td></tr>
+          <tr><td>semantic<br><small style="font-weight:400;color:var(--ink-3)">需要 embedding</small></td>
+            <td>正则切句（中英文），每句连同前后各一句一起做 embedding；相邻两句的距离超过全文第 90 百分位时切开；过小的块合并，过大的块再切</td>
+            <td><code>SemanticChunker</code>，通过适配器接入同一个 embedding 服务；相似度阈值校准为 0.15，使平均 chunk 大小与自研相近</td>
+            <td>没有可用的现成实现（<code>langchain_experimental</code> 不建议用）；把自研算法封装成 LangChain 的 <code>TextSplitter</code>，可以直接接收 LangChain 的 <code>Embeddings</code></td></tr>
+          <tr><td>context_enriched<br><small style="font-weight:400;color:var(--ink-3)">需要 LLM</small></td>
+            <td>在 fixed_size 外面包一层：取以 chunk 为中心约 1,500 token 的原文（文档较短时用全文）和 chunk 本身，让 LLM 写一句上下文，拼在 embedding 文本前；chunk 原文不变</td>
+            <td>库里没有这个功能，用自研的同一层包装 chonkie 的 fixed_size</td>
+            <td>库里没有这个功能，把自研的同一层封装成 LangChain 的 <code>BaseDocumentTransformer</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">本报告里的 context_enriched 是每个 chunk 调用一次 LLM 的做法。按以前的设计，这一策略接下来会改成"父子块 + 父块摘要"：先切大的父块，每个父块调用一次 LLM 生成摘要，再在父块内切子块，把父块摘要加在每个子块前做 embedding，同时保留子块原文、稳定 ID 和父子映射。</p>
+  </section>
+
+  <section>
+    <div class="prose" style="display:grid;gap:10px">
       <div class="eyebrow">主结果</div>
       <h2>按 2,000 token 检索预算算召回率</h2>
       <p class="note">横轴从最低值附近开始，用点而不是柱子表示，避免放大差距。</p>
