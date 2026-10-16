@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import json
+import sys
 from collections import defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-RES = ROOT / "results"
+RES = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "results"  # optional results dir
 
 OPTS = ["selfbuilt", "chonkie", "langchain"]
 STRATS = ["fixed_size", "layout_aware", "semantic"]

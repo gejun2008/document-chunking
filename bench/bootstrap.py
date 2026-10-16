@@ -2,8 +2,9 @@
 
 Re-chunks each (dataset, option, strategy) cell at chunk_size 400, reuses the
 cached embeddings, scores every query, then resamples queries with
-replacement (paired: the same queries for both sides). Writes results/bootstrap.json.
+replacement (paired: the same queries for both sides). Writes <results-dir>/bootstrap.json.
 """
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -12,9 +13,8 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path[:0] = [str(ROOT / "src"), str(ROOT / "bench")]
 import numpy as np
 from datasets import load_chroma, load_ohr, load_qasper
-from local_models import DiskCachedEmbedder, SentenceTransformerEmbedder
 from metrics import evaluate
-from run_bench import build
+from run_bench import add_model_args, build, make_embedder
 
 from doc_chunking.text import count_tokens
 
@@ -23,7 +23,11 @@ class Args:
     chunk_size, overlap, percentile, chonkie_threshold, window_tokens, llm_workers = 400, 50, 90.0, 0.15, 1500, 1
 
 
-emb = DiskCachedEmbedder(SentenceTransformerEmbedder("BAAI/bge-m3"), "BAAI/bge-m3")
+ap = argparse.ArgumentParser()
+add_model_args(ap)
+ap.add_argument("--results-dir", default=str(ROOT / "results"))
+args = ap.parse_args()
+emb = make_embedder(args)
 METRIC = "recall@2000tok"
 PAIRS = [("selfbuilt", "langchain"), ("selfbuilt", "chonkie")]
 rng = np.random.default_rng(0)
@@ -50,4 +54,4 @@ for ds in (load_chroma(), load_qasper(), load_ohr()):
                  "significant": bool(lo > 0 or hi < 0)}
             out.append(r)
             print(f"{ds.name:7s} {strat:13s} {a}-{b:9s} {diff.mean()*100:+5.1f} [{lo*100:+5.1f}, {hi*100:+5.1f}] {'*' if r['significant'] else ''}", flush=True)
-(ROOT / "results" / "bootstrap.json").write_text(json.dumps(out, indent=1))
+(Path(args.results_dir) / "bootstrap.json").write_text(json.dumps(out, indent=1))

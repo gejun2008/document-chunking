@@ -51,25 +51,32 @@ Production notes:
 
 ## Tests and benchmark
 
+The three public datasets are committed under `data/` (sources and licenses: [data/README.md](data/README.md)).
+`bench/download_data.py` re-fetches the same pinned files and verifies their SHA-256.
+
 ```bash
 uv sync --all-extras --all-groups
 uv run pytest
-uv run python bench/download_data.py   # public datasets at pinned revisions, SHA-256 verified
 uv run python bench/run_bench.py       # local bge-m3; context enrichment needs Apple Silicon or --llm-url
 uv run python bench/make_report.py     # -> results/report.md
 ```
 
-On a machine without Apple Silicon, or to use company services instead of local models:
+### Re-run with company models
+
+Any OpenAI-compatible `/embeddings` and `/chat/completions` endpoint works. One command runs every stage
+(all strategies, context enrichment, chunk-size sweep, significance test, report) into `results/company/`,
+leaving the local-model results untouched:
 
 ```bash
-export EMBEDDING_API_KEY=... LLM_API_KEY=...
-uv run python bench/run_bench.py --out results/company.jsonl \
-  --embedding-url https://<gateway>/v1 --embedding-model <model> \
-  --llm-url https://<gateway>/v1 --llm-model <model>
+export EMBEDDING_BASE_URL=https://<gateway>/v1 EMBEDDING_MODEL=<model> EMBEDDING_API_KEY=...
+export LLM_BASE_URL=https://<gateway>/v1 LLM_MODEL=<model> LLM_API_KEY=...
+bench/run_company.sh
+uv run python bench/compare_runs.py results results/company   # R@2k side by side
 ```
 
-Write company runs to a separate `--out` file: finished cells are skipped by
-(dataset, option, strategy), so reusing `results/results.jsonl` would skip everything.
+Optional: `EMBEDDING_BATCH_SIZE` (default 64) if the gateway limits batch size, `LLM_WORKERS` (default 8)
+for parallel LLM calls, `OUT_DIR` for another output folder. Finished cells are skipped, so an interrupted
+run can simply be started again.
 
 Why these datasets and metrics, quality checks, significance tests and limitations:
-[docs/benchmark-methodology.md](docs/benchmark-methodology.md). Published report: `results/chunking_report.html`.
+[docs/benchmark-methodology.md](docs/benchmark-methodology.md). Report: `results/chunking_report.html`.

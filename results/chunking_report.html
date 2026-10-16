@@ -89,7 +89,7 @@ code { font: 13px var(--f-mono); background: var(--accent-soft); padding: 1px 5p
     <div class="eyebrow">Document Studio · Document Chunking</div>
     <h1>文档切分方案评测</h1>
     <p class="lede">把三个可上生产的候选方案都实现出来，在三个公开基准上用同一套 embedding、同一套指标跑了一遍，回答两个问题：自研的效果有没有短板，以及该选哪个方案。</p>
-    <div class="meta"><span id="m-queries"></span><span id="m-tokens"></span><span>embedding: BAAI/bge-m3</span><span>LLM: Qwen3-4B-Instruct (本地)</span></div>
+    <div class="meta"><span id="m-queries"></span><span id="m-tokens"></span><span id="m-emb"></span><span id="m-llm"></span></div>
   </header>
 
   <section class="verdict prose" aria-labelledby="v-h">
@@ -178,7 +178,7 @@ code { font: 13px var(--f-mono); background: var(--accent-soft); padding: 1px 5p
     <h2>数据集与口径</h2>
     <div class="tablebox"><table id="t-ds"></table></div>
     <ul class="notes">
-      <li>三个方案用同一套 embedding（bge-m3，本地运行）和同一个 LLM，所有 chunk 都校验了 <code>text == 原文[start:end]</code>，指标按字符区间重叠计算，与 Chroma 的 chunking 评测口径一致。</li>
+      <li>三个方案用同一个 embedding 模型和同一个 LLM（见页首），所有 chunk 都校验了 <code>text == 原文[start:end]</code>，指标按字符区间重叠计算，与 Chroma 的 chunking 评测口径一致。</li>
       <li>Chroma 和 OHR-Bench 在整个数据集的所有 chunk 里检索；Qasper 的问题不写论文名，所以只在对应论文内检索。</li>
       <li>chonkie 的 semantic 阈值校准到与自研相近的平均 chunk 大小（0.15），其余参数都用库的默认值。LangChain 的 semantic 就是自研算法套接口，所以两行数字相同。</li>
       <li>embedding 和 LLM 都用本地开源模型，换成公司的 API 后绝对数值会变，方案之间的相对差距更有参考价值。重跑方式：<code>bench/run_bench.py --embedding-url … --llm-url …</code>。</li>
@@ -216,6 +216,9 @@ document.getElementById("legend-main").innerHTML = OPTS.map(o => `<span><i style
 const full = DS.map(([d]) => rows.find(r => r.dataset === d)).filter(Boolean);
 document.getElementById("m-queries").textContent = `${full.reduce((a, r) => a + r.n_queries, 0).toLocaleString()} 个问题`;
 document.getElementById("m-tokens").textContent = `${DATA.tokens}`;
+const cfg = rows[0].config, ctxRow = rows.find(r => r.strategy === "context_enriched");
+document.getElementById("m-emb").textContent = `embedding: ${cfg.embedding_model}`;
+document.getElementById("m-llm").textContent = `LLM: ${(ctxRow || rows[0]).config.llm_model}`;
 
 // main bar charts: one per dataset, groups = strategy, bars = options (horizontal)
 const main = document.getElementById("charts-main");

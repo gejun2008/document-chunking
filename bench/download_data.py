@@ -3,9 +3,8 @@
     uv run python bench/download_data.py            # into ./data
     uv run python bench/download_data.py --out DIR
 
-The data is not committed to the repo: OHR-Bench is "for research purposes only
-and not for commercial use", and pinning + checksums makes the download
-reproducible anyway. See docs/benchmark-methodology.md for provenance.
+The same files are committed under data/ (see data/README.md for sources and
+licenses); this script re-fetches them and verifies they are unchanged.
 """
 
 from __future__ import annotations

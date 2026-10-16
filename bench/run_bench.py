@@ -123,6 +123,42 @@ def run_cell(ds: Dataset, option: str, strategy: str, a, emb, llm, cache) -> dic
     }
 
 
+def add_model_args(p: argparse.ArgumentParser) -> None:
+    """Embedding / LLM selection shared by run_bench.py and bootstrap.py."""
+    p.add_argument("--embedding-url", help="OpenAI-compatible base URL (key: EMBEDDING_API_KEY); default local bge-m3")
+    p.add_argument("--embedding-model", default="BAAI/bge-m3")
+    p.add_argument("--embedding-batch-size", type=int, default=64)
+    p.add_argument("--llm-url", help="OpenAI-compatible base URL (key: LLM_API_KEY); default local Qwen3-4B via mlx")
+    p.add_argument("--llm-model", default="mlx-community/Qwen3-4B-Instruct-2507-4bit")
+    p.add_argument("--llm-workers", type=int, default=8)
+
+
+def make_embedder(a: argparse.Namespace) -> DiskCachedEmbedder:
+    if a.embedding_url:
+        from doc_chunking.clients import OpenAICompatibleEmbedder
+
+        inner = OpenAICompatibleEmbedder(a.embedding_url, model=a.embedding_model, batch_size=a.embedding_batch_size)
+    else:
+        from local_models import SentenceTransformerEmbedder
+
+        inner = SentenceTransformerEmbedder(a.embedding_model)
+    return DiskCachedEmbedder(inner, a.embedding_model)
+
+
+def make_llm(a: argparse.Namespace):
+    if a.llm_url:
+        from doc_chunking.clients import OpenAICompatibleChat
+
+        return OpenAICompatibleChat(a.llm_url, model=a.llm_model)
+    import platform
+
+    if not (sys.platform == "darwin" and platform.machine() == "arm64"):
+        sys.exit("The local LLM needs Apple Silicon (mlx). Pass --llm-url/--llm-model for an OpenAI-compatible endpoint.")
+    from local_models import BatchedMLXChat
+
+    return BatchedMLXChat(a.llm_model, batch_size=a.llm_workers)
+
+
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--datasets", nargs="+", default=["chroma", "qasper", "ohr"])
@@ -133,38 +169,12 @@ def main() -> None:
     p.add_argument("--percentile", type=float, default=90.0)
     p.add_argument("--chonkie-threshold", type=float, default=0.15)  # see calibrate_chonkie.py
     p.add_argument("--window-tokens", type=int, default=1500)
-    p.add_argument("--llm-workers", type=int, default=8)
-    p.add_argument("--embedding-url")
-    p.add_argument("--embedding-model", default="BAAI/bge-m3")
-    p.add_argument("--llm-url")
-    p.add_argument("--llm-model", default="mlx-community/Qwen3-4B-Instruct-2507-4bit")
+    add_model_args(p)
     p.add_argument("--out", default=str(ROOT / "results" / "results.jsonl"))
     a = p.parse_args()
 
-    if a.embedding_url:
-        from doc_chunking.clients import OpenAICompatibleEmbedder
-
-        inner = OpenAICompatibleEmbedder(a.embedding_url, model=a.embedding_model)
-    else:
-        from local_models import SentenceTransformerEmbedder
-
-        inner = SentenceTransformerEmbedder(a.embedding_model)
-    emb = DiskCachedEmbedder(inner, a.embedding_model)
-
-    llm = None
-    if "context_enriched" in a.strategies:
-        if a.llm_url:
-            from doc_chunking.clients import OpenAICompatibleChat
-
-            llm = OpenAICompatibleChat(a.llm_url, model=a.llm_model)
-        else:
-            import platform
-
-            if not (sys.platform == "darwin" and platform.machine() == "arm64"):
-                sys.exit("The local LLM needs Apple Silicon (mlx). Pass --llm-url/--llm-model for an OpenAI-compatible endpoint.")
-            from local_models import BatchedMLXChat
-
-            llm = BatchedMLXChat(a.llm_model, batch_size=a.llm_workers)
+    emb = make_embedder(a)
+    llm = make_llm(a) if "context_enriched" in a.strategies else None
     cache = SqliteDict(CACHE_DIR / f"ctx_{a.llm_model.replace('/', '_')}.sqlite")
 
     out = Path(a.out)

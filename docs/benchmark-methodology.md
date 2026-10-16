@@ -113,9 +113,10 @@ chunk_size=400 时的配对 bootstrap 结果（R@2k tok，单位为百分点，*
 
 ## 7. 复现
 
+三个数据集已经提交在仓库的 `data/` 目录（来源、版本和许可见 `data/README.md`）；`bench/download_data.py` 可以按固定版本重新下载，并校验 SHA-256。
+
 ```bash
 uv sync --all-extras --all-groups
-uv run python bench/download_data.py          # 固定版本下载，并校验 SHA-256
 uv run pytest
 uv run python bench/run_bench.py --strategies fixed_size layout_aware semantic
 uv run python bench/run_bench.py --strategies context_enriched --out results/results_ctx.jsonl
@@ -124,7 +125,7 @@ uv run python bench/bootstrap.py
 uv run python bench/make_report.py            # -> results/report.md
 ```
 
-在非 Apple Silicon 的机器上，本地 LLM 不可用，context enrich 需要传 `--llm-url` 和 `--llm-model` 指向公司的 OpenAI 兼容接口。embedding 也可以用 `--embedding-url` 和 `--embedding-model` 换成公司的服务。
+**换成公司的 embedding 和 LLM：** 设置 `EMBEDDING_BASE_URL`、`EMBEDDING_MODEL`、`EMBEDDING_API_KEY` 和 `LLM_BASE_URL`、`LLM_MODEL`、`LLM_API_KEY` 后运行 `bench/run_company.sh`。它会把所有阶段的结果和报告写到 `results/company/`，再用 `bench/compare_runs.py results results/company` 与本地模型的结果逐项对比。在非 Apple Silicon 的机器上，本地 LLM 不可用，context enrich 只能用公司的接口。
 
 ## 参考文献
 
