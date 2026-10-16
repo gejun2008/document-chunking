@@ -4,11 +4,11 @@ from pathlib import Path
 
 VERDICT = """
 <ol>
-  <li><strong>自研的效果和两个库在同一水平。</strong>自研 fixed_size 用"先按段落、再按行、句子、词"的递归切分，和 LangChain 完全打平：Qasper 78.6%、OHR-Bench 86.6%，Chroma 93.7% 对 93.1%。它比 chonkie 高 2–9 个点。layout_aware 三个数据集平均也和 LangChain 持平（都是 87.1%）。semantic 上自研比 chonkie 好（Qasper 76.7% 对 71.5%）。</li>
-  <li><strong>layout_aware 可以作为所有文档的默认策略。</strong>超长章节改为回退到递归切分后，在没有标题的 Chroma 和 OHR-Bench 上和 fixed_size 基本持平（相差 0.5 个点以内，OHR 在 chunk_size 300 时低 1.2）。在有章节标题的 Qasper 上，chunk_size 300 和 400 时它比 fixed_size 高约 3 个点（300 时 82.7% 对 79.7%），200 时两者持平。</li>
-  <li><strong>参数和策略选择比选哪个方案影响更大。</strong>自研 fixed_size 的 chunk_size 从 400 降到 200，召回提升 2–4 个点。semantic 每篇文档要多做一遍全量 embedding，切分多花 100–200 秒，效果却没有超过 fixed_size 和 layout_aware。</li>
-  <li><strong>context enrich 在有结构的文档上有收益，但还要用生产模型复核。</strong>以自研 fixed_size 为基线、用本地 4B 模型生成上下文，结果是 Chroma −0.3、Qasper +2.7、OHR-Bench +5.2 个点。每个 chunk 都要调用一次 LLM，成本也需要一并评估。</li>
-  <li><strong>建议：</strong>推荐方案 1 自研。默认用 layout_aware，chunk_size 取 200–300；它在没有标题的文档上会自然退化成 fixed_size。context enrich 做成可选项，用生产 LLM 验证后再决定是否默认开启。方案 3 在效果上已经没有优势，不值得为它引入 34 个依赖。chonkie 不建议用于生产。</li>
+  <li><strong>方案 1（自研）和方案 3（LangChain + 自研）效果相当，两个都可以选。</strong>三个数据集上，两者的差距都在统计噪声范围内。</li>
+  <li><strong>不推荐 chonkie。</strong>效果最多低 9 个点，而且维护集中在两个人身上。</li>
+  <li><strong>默认策略用 layout_aware，chunk_size 取 200–300。</strong>它在有标题的文档上比 fixed_size 好，没有标题时和 fixed_size 持平。semantic 更慢，效果也没有更好。</li>
+  <li><strong>context enrich 先做成可选项。</strong>用本地小模型测有收益（最多 +5 个点），但要用生产 LLM 复核效果和成本后再决定是否默认开启。</li>
+  <li><strong>选 1 还是 3，看安全和维护。</strong>如果 langchain-core 已在白名单、团队想统一用 LangChain，选方案 3。如果想把依赖压到最少（10 个对 34 个），并且不想跟着 LangChain 升级、处理它的漏洞，选方案 1。</li>
 </ol>
 """
 
