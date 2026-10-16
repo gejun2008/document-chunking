@@ -11,3 +11,6 @@ __pycache__/
 
 # run logs
 results/*.log
+
+# git bundles for moving the repo to machines without GitHub access
+dist/
