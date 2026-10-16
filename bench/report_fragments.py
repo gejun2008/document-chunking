@@ -4,11 +4,9 @@ from pathlib import Path
 
 VERDICT = """
 <ol>
-  <li><strong>方案 1（自研）和方案 3（LangChain + 自研）效果相当，两个都可以选。</strong>三个数据集上，两者的差距都在统计噪声范围内。</li>
-  <li><strong>不推荐 chonkie。</strong>效果最多低 9 个点，而且维护集中在两个人身上。</li>
-  <li><strong>默认策略用 layout_aware，chunk_size 取 200–300。</strong>它在有标题的文档上比 fixed_size 好，没有标题时和 fixed_size 持平。semantic 更慢，效果也没有更好。</li>
-  <li><strong>context enrich 先做成可选项。</strong>用本地小模型测有收益（最多 +5 个点），但要用生产 LLM 复核效果和成本后再决定是否默认开启。</li>
-  <li><strong>选 1 还是 3，看安全和维护。</strong>如果 langchain-core 已在白名单、团队想统一用 LangChain，选方案 3。如果想把依赖压到最少（10 个对 34 个），并且不想跟着 LangChain 升级、处理它的漏洞，选方案 1。</li>
+  <li><strong>方案 1（自研）和方案 3（LangChain + 自研）都可以选，chonkie 不推荐。</strong>1 和 3 的效果差距在统计噪声范围内，选哪个主要看团队情况：想少引入依赖（10 个对 34 个）、自己掌控升级，选 1；langchain-core 已在白名单、团队本来就用 LangChain，选 3。</li>
+  <li><strong>默认用 layout_aware，chunk_size 建议 200–300，可以按文档类型调整。</strong>有标题的文档上它比 fixed_size 好，没有标题时两者持平。semantic 更慢，效果也没有更好，一般不需要。</li>
+  <li><strong>context enrich 先做成可选项。</strong>本地小模型测下来最多提升 5 个点，是否默认开启，等用公司的 LLM 测过效果和成本再定。</li>
 </ol>
 """
 
